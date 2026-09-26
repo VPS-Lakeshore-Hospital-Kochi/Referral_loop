@@ -15,7 +15,7 @@ import { useStore } from './lib/store'
 import logoWhite from './assets/lakeshore-logo-white.png'
 
 function Nav() {
-  const { staff, staffLogout } = useStore()
+  const { staff, staffLogout, doctor, logout } = useStore()
   return (
     <header className="nav">
       <div className="container nav-inner">
@@ -34,6 +34,11 @@ function Nav() {
               {staff.role === 'Admin' && <NavLink to="/admin">Admin</NavLink>}
               <button className="nav-signout" onClick={staffLogout}>Sign out</button>
               <NavLink to="/desk/new" className="btn btn-light hide-sm">+ Add referral</NavLink>
+            </>
+          ) : doctor ? (
+            <>
+              <NavLink to="/doctor" end>Your patients</NavLink>
+              <button className="nav-signout" onClick={logout}>Sign out</button>
             </>
           ) : (
             <>

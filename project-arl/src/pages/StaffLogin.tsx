@@ -37,9 +37,10 @@ export default function StaffLogin() {
           <button className="btn btn-primary">Sign in</button>
         </form>
 
-        <div className="card card-pad">
-          <h3>Demo accounts</h3>
-          <p className="small muted">Prototype only. Every account uses the password <span className="mono">{DEMO_PASSWORD}</span>. Click one to fill it in.</p>
+        <details className="more">
+          <summary>Demo accounts (prototype only)</summary>
+          <div className="card card-pad" style={{ marginTop: 8 }}>
+          <p className="small muted">Every account uses the password <span className="mono">{DEMO_PASSWORD}</span>. Click one to fill it in.</p>
           <div className="table-wrap">
             <table>
               <tbody>
@@ -54,7 +55,8 @@ export default function StaffLogin() {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </details>
     </SplitLayout>
   )
 }

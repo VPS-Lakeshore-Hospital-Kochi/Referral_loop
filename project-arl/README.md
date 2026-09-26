@@ -34,6 +34,13 @@ Every referral moves through four stages: **New → With us → Discharged → P
 | `#/doctor` | Referring MO / polyclinic OIC | Their referrals, with filters for under care, discharged and follow-up needed |
 | `#/doctor/:id` | Referring MO / polyclinic OIC | What happened after referral: consultant, admission, procedure, discharge diagnosis, condition, follow-up advice. They can also message the treating team |
 
+### Referrer portal: how a doctor uses it
+
+1. **Sign in** with their mobile number and the code sent by SMS.
+2. **"For you to do"** lists only what needs them: follow-up advice for a patient who has gone home, or a referral that needs sending again.
+3. **"Your patients"** shows each patient in one of three stages (**Received → Being treated → Gone home**), with one line on where things stand.
+4. **Open a patient** to see the follow-up advice, a short summary (seen by, treatment, diagnosis, condition) and the latest message from the hospital, and to message the treating team. The full history is under **More details**.
+
 ### Referrer portal: who sees what
 
 - A **Medical Officer** sees only the referrals they wrote. A **polyclinic OIC** also sees every referral from their polyclinic, including emergency admissions intimated to it. Any other referral ID reads as "not found".
