@@ -58,3 +58,40 @@ export function referrerStatus(r: Referral): { label: string; tone: string } {
 }
 
 export const isDischarged = (r: Referral) => ['Discharged', 'Claim submitted', 'Settled'].includes(r.stage)
+
+// ---- Plain-language layer for the referrer portal ----
+
+/** Three stages a busy doctor can read at a glance. */
+export const DOCTOR_STAGES = ['Received', 'Being treated', 'Gone home'] as const
+export type DoctorStage = (typeof DOCTOR_STAGES)[number]
+
+export function doctorStage(r: Referral): DoctorStage {
+  if (isDischarged(r)) return 'Gone home'
+  return r.stage === 'In treatment' ? 'Being treated' : 'Received'
+}
+
+const shortDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '')
+
+/** One sentence: where the patient is now. */
+export function latestNews(r: Referral): string {
+  const o = r.outcome ?? {}
+  if (r.exception === 'Referral expired') return 'The referral expired before treatment. Please send a new one.'
+  if (isDischarged(r)) return o.dischargedOn ? `Went home on ${shortDate(o.dischargedOn)}.` : 'Has gone home.'
+  switch (r.stage) {
+    case 'In treatment':
+      return [o.admittedOn ? `Admitted on ${shortDate(o.admittedOn)}.` : 'Being seen now.', o.condition].filter(Boolean).join(' ')
+    case 'Scheduled':
+      return 'Appointment booked.'
+    case 'Registered in HIS':
+      return 'Registered. Appointment being arranged.'
+    default:
+      return 'We have received the referral.'
+  }
+}
+
+/** Something the referring doctor needs to act on, if anything. */
+export function needsDoctor(r: Referral): string | null {
+  if (r.exception === 'Referral expired') return 'Send a new referral'
+  if (isDischarged(r) && r.outcome?.followUp) return `Follow-up: ${r.outcome.followUp}`
+  return null
+}

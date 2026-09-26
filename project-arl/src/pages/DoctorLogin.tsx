@@ -43,37 +43,38 @@ export default function DoctorLogin() {
   }
 
   return (
-    <SplitLayout eyebrow="Referrer portal · ECHS polyclinics" title="Every patient you refer, in good hands." lead="Sign in to see each patient’s progress after referral, their outcome, and the follow-up advice meant for your polyclinic.">
+    <SplitLayout eyebrow="Referrer portal · ECHS polyclinics" title="Every patient you refer, in good hands." lead="See how your patients are doing, and what to do when they come back to you.">
         <div className="card card-pad">
-          <h3>Sign in with your registered mobile</h3>
+          <h3>Sign in with your mobile number</h3>
           {!otpSent ? (
             <form onSubmit={sendOtp} className="stack" style={{ gap: 12 }}>
               <div className="field">
-                <label htmlFor="mo-mobile">Registered mobile number</label>
+                <label htmlFor="mo-mobile">Mobile number</label>
                 <input id="mo-mobile" inputMode="numeric" maxLength={10} required value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} placeholder="10-digit mobile" />
               </div>
               {error && <div className="alert danger">{error}</div>}
-              <button className="btn btn-primary" disabled={mobile.length !== 10}>Send OTP</button>
+              <button className="btn btn-primary" disabled={mobile.length !== 10}>Send me a code</button>
             </form>
           ) : (
             <form onSubmit={verify} className="stack" style={{ gap: 12 }}>
               <div className="alert info">OTP sent to {mobile.slice(0, 2)}******{mobile.slice(-2)} for {account?.name}.</div>
               <div className="field">
-                <label htmlFor="mo-otp">6-digit OTP</label>
+                <label htmlFor="mo-otp">6-digit code from the SMS</label>
                 <input id="mo-otp" inputMode="numeric" maxLength={6} required autoFocus value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} />
               </div>
               {error && <div className="alert danger">{error}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-ghost" onClick={() => { setOtpSent(false); setOtp(''); setError('') }}>Change number</button>
-                <button className="btn btn-primary" disabled={otp.length !== 6}>Log in</button>
+                <button className="btn btn-primary" disabled={otp.length !== 6}>Sign in</button>
               </div>
             </form>
           )}
         </div>
 
-        <div className="card card-pad">
-          <h3>Demo accounts</h3>
-          <p className="small muted">Prototype only. Use any number below with OTP <span className="mono">{DEMO_OTP}</span>.</p>
+        <details className="more">
+          <summary>Demo accounts (prototype only)</summary>
+          <div className="card card-pad" style={{ marginTop: 8 }}>
+          <p className="small muted">Tap a doctor, then use the code <span className="mono">{DEMO_OTP}</span>.</p>
           <div className="table-wrap">
             <table>
               <tbody>
@@ -86,7 +87,8 @@ export default function DoctorLogin() {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </details>
     </SplitLayout>
   )
 }
