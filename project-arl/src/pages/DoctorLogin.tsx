@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { DEMO_OTP, DOCTORS } from '../lib/doctors'
+import { DEMO_OTP } from '../lib/doctors'
 import { useStore } from '../lib/store'
 
 export default function DoctorLogin() {
-  const { doctor, login } = useStore()
+  const { doctor, doctors, login, logAudit } = useStore()
   const nav = useNavigate()
   const [mobile, setMobile] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -13,12 +13,17 @@ export default function DoctorLogin() {
 
   if (doctor) return <Navigate to="/doctor" replace />
 
-  const account = DOCTORS.find((d) => d.mobile === mobile)
+  const account = doctors.find((d) => d.mobile === mobile)
 
   const sendOtp = (e: FormEvent) => {
     e.preventDefault()
     if (!account) {
       setError('This mobile number is not registered for the referrer portal. Ask your polyclinic OIC to contact the VPS Lakeshore ECHS cell.')
+      return
+    }
+    if (!account.active) {
+      logAudit({ actorType: 'system', actor: account.name, action: 'Blocked login: referrer deactivated' })
+      setError('Your referrer portal access has been deactivated. Contact the VPS Lakeshore ECHS cell.')
       return
     }
     setError('')
@@ -28,6 +33,7 @@ export default function DoctorLogin() {
   const verify = (e: FormEvent) => {
     e.preventDefault()
     if (otp !== DEMO_OTP || !account) {
+      logAudit({ actorType: 'system', actor: account?.name ?? mobile, action: 'Failed referrer OTP' })
       setError('That code is incorrect. Check the SMS and try again.')
       return
     }
@@ -79,9 +85,9 @@ export default function DoctorLogin() {
           <div className="table-wrap">
             <table>
               <tbody>
-                {DOCTORS.map((d) => (
+                {doctors.map((d) => (
                   <tr key={d.id} className="click" onClick={() => { setMobile(d.mobile); setOtpSent(false); setError('') }}>
-                    <td>{d.name}<div className="muted small">{d.role} · {d.polyclinic.replace('ECHS Polyclinic ', 'PC ')}</div></td>
+                    <td>{d.name} {!d.active && <span className="badge danger">Deactivated</span>}<div className="muted small">{d.role} · {d.polyclinic.replace('ECHS Polyclinic ', 'PC ')}</div></td>
                     <td className="mono small">{d.mobile}</td>
                   </tr>
                 ))}

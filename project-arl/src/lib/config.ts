@@ -1,14 +1,33 @@
-// Policy parameters. These reflect common ECHS empanelment terms but MUST be
-// confirmed against the current MoA with the Regional Centre before go-live —
-// they are deliberately kept here, in one place, so the business can own them.
+import type { Policy } from './types'
 
-export const POLICY = {
+// Policy parameters. These reflect common ECHS empanelment terms but MUST be
+// confirmed against the current MoA with the Regional Centre before go-live.
+// Defaults live here; admins change the live values from the admin console.
+
+export const DEFAULT_POLICY: Policy = {
   /** Days a polyclinic referral remains valid from its issue date. */
   referralValidityDays: 30,
   /** Hours within which an emergency admission must be intimated to the polyclinic / RC. */
   emergencyIntimationHours: 48,
   /** Target days from discharge to claim upload on the bill-processing portal. */
   claimSubmissionTargetDays: 7,
+}
+
+/**
+ * Live policy values read by the rules engine. The store updates this object
+ * whenever an admin saves new values, so every reader sees the change on the
+ * next render without threading policy through each call.
+ */
+export const POLICY: Policy = { ...DEFAULT_POLICY }
+
+export const POLICY_LABELS: Record<keyof Policy, string> = {
+  referralValidityDays: 'Referral validity (days)',
+  emergencyIntimationHours: 'Emergency intimation (hours)',
+  claimSubmissionTargetDays: 'Claim upload target (days)',
+}
+
+export function applyPolicy(p: Policy) {
+  Object.assign(POLICY, p)
 }
 
 export const HOSPITAL = {
@@ -54,5 +73,3 @@ export const DEFAULT_DOCUMENTS = [
   { key: 'discharge', label: 'Discharge summary (from HIS)', required: false },
   { key: 'bill', label: 'Final itemised bill (from HIS)', required: false },
 ]
-
-export const STAFF = ['Anjali (Insurance Desk)', 'Rahul (Insurance Desk)', 'Fathima (Front Office)', 'Suresh (Billing)']

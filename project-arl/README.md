@@ -15,6 +15,8 @@ This front end is modelled on the "How it works" flow of referral-management pla
 | Route | Who it's for | What it does |
 |---|---|---|
 | `#/` | Everyone | Landing page with a "How it works" section that has three tabs (beneficiary, polyclinic, hospital), the features, and a system architecture diagram |
+| `#/staff/login` | Hospital staff | Sign-in for the desk and admin console. Demo: any listed account, password `arl-demo` |
+| `#/admin` | ARL administrator | Admin console: referring-doctor accounts, staff accounts and roles, ECHS policy settings, access log |
 | `#/desk` | Insurance desk / billing | Referral worklist: KPIs, a stage pipeline, search, and per-referral alerts (validity lapsing, 48-hour emergency intimation, claim-upload target, ECHS queries) |
 | `#/desk/:id` | Desk officer | Referral detail: 8-stage tracker, a guided "next step", Datamate patient matching and registration, opening the OP/IP encounter, document checklist, claim pack, settlement, timeline |
 | `#/desk/new` | Front office / desk | Referral intake form. It checks for **duplicate patients in Datamate** as you type, and flags duplicate referral numbers and expired referrals |
@@ -33,6 +35,16 @@ This front end is modelled on the "How it works" flow of referral-management pla
 In production, accounts would be onboarded by the ECHS cell against the polyclinic's MO roster, with the medical council registration number checked. Login would be an OTP to the registered mobile, and every record view would be written to an access log.
 
 Everything runs in the browser against **mock data** (`localStorage`). There is no real patient data.
+
+### Staff sign-in and admin console
+
+- The referral desk (`#/desk/*`) needs a staff sign-in. The admin console (`#/admin`) also needs the **Admin** role. Other roles see a "no access" page.
+- **Referring doctors:** add (registration number and mobile must be unique), deactivate or reactivate. A deactivated doctor is signed out and can't sign in again. Their referral history is kept.
+- **Staff accounts:** add hospital (`@lakeshorehospital.org`) accounts, change roles, deactivate. You can't change your own account or remove the last active admin.
+- **ECHS policy:** referral validity, emergency intimation window and claim-upload target. Desk alerts use the saved values straight away.
+- **Access log:** staff and doctor sign-ins, failed or blocked sign-ins, every referral a doctor opens, blocked access attempts, doctor messages, and every admin change. It's searchable and can be filtered by who.
+
+Production should replace the demo password with the hospital's single sign-on and MFA, and keep the access log on the server where it can't be edited.
 
 ## Architecture
 

@@ -54,6 +54,36 @@ export interface ReferringDoctor {
   /** State Medical Council / NMC registration number — verified at onboarding. */
   registrationNo: string
   mobile: string
+  /** Deactivated accounts cannot log in; their history is kept. */
+  active: boolean
+  lastLoginAt?: string
+}
+
+export type StaffRole = 'Admin' | 'Insurance Desk' | 'Front Office' | 'Billing'
+
+/** Hospital staff account for the referral desk and admin console. */
+export interface StaffUser {
+  id: string
+  name: string
+  email: string
+  role: StaffRole
+  active: boolean
+  lastLoginAt?: string
+}
+
+export interface Policy {
+  referralValidityDays: number
+  emergencyIntimationHours: number
+  claimSubmissionTargetDays: number
+}
+
+/** Who did what, when — the access log required before live patient data. */
+export interface AuditEvent {
+  at: string
+  actorType: 'staff' | 'doctor' | 'system'
+  actor: string
+  action: string
+  detail?: string
 }
 
 /** Clinical outcome returned to the referrer — no financial detail. */
