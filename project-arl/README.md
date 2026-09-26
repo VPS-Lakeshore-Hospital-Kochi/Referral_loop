@@ -19,6 +19,18 @@ This front end is modelled on the "How it works" flow of referral-management pla
 | `#/desk/:id` | Desk officer | Referral detail: 8-stage tracker, a guided "next step", Datamate patient matching and registration, opening the OP/IP encounter, document checklist, claim pack, settlement, timeline |
 | `#/desk/new` | Front office / desk | Referral intake form. It checks for **duplicate patients in Datamate** as you type, and flags duplicate referral numbers and expired referrals |
 | `#/track` | Beneficiary / family | Plain-language status page, looked up by reference number plus the last 4 digits of the mobile number |
+| `#/doctor/login` | Referring MO / polyclinic OIC | OTP login to the referrer portal. Demo: any listed mobile number, OTP `123456` |
+| `#/doctor` | Referring MO / polyclinic OIC | Their referrals, with filters for under care, discharged and follow-up needed |
+| `#/doctor/:id` | Referring MO / polyclinic OIC | What happened after referral: consultant, admission, procedure, discharge diagnosis, condition, follow-up advice. They can also message the treating team |
+
+### Referrer portal: who sees what
+
+- A **Medical Officer** sees only the referrals they wrote. A **polyclinic OIC** also sees every referral from their polyclinic, including emergency admissions intimated to it. Any other referral ID reads as "not found".
+- Referrers see **clinical milestones up to discharge**. They don't see claim, settlement, cost estimates or internal desk notes.
+- Desk notes reach the referrer only when **Share with referring doctor** is ticked. Doctor messages show on the desk as **Referring doctor awaiting reply** until the desk answers with a shared note.
+- The discharge outcome (final diagnosis, condition, follow-up advice) is entered at **Record discharge** and shown to the referrer.
+
+In production, accounts would be onboarded by the ECHS cell against the polyclinic's MO roster, with the medical council registration number checked. Login would be an OTP to the registered mobile, and every record view would be written to an access log.
 
 Everything runs in the browser against **mock data** (`localStorage`). There is no real patient data.
 

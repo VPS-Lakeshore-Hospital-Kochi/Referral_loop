@@ -24,6 +24,7 @@ export default function ReferralDetail() {
 function Detail({ r }: { r: Referral }) {
   const { update } = useStore()
   const [note, setNote] = useState('')
+  const [shareNote, setShareNote] = useState(false)
   const alerts = alertsFor(r)
   const b = r.beneficiary
 
@@ -80,15 +81,25 @@ function Detail({ r }: { r: Referral }) {
               <ul className="timeline">
                 {[...r.timeline].reverse().map((t, i) => (
                   <li key={i} className={t.stage === 'Exception' ? 'exc' : t.stage === 'Note' ? 'note' : ''}>
-                    <b>{t.stage}</b> — {t.text}
-                    <div className="muted small">{fmtDateTime(t.at)} · {t.actor}</div>
+                    <b>{t.fromReferrer ? 'Message from referring doctor' : t.stage}</b> — {t.text}
+                    <div className="muted small">
+                      {fmtDateTime(t.at)} · {t.actor}
+                      {t.fromReferrer && <span className="badge warn" style={{ marginLeft: 6 }}>From referrer</span>}
+                      {t.shared && <span className="badge info" style={{ marginLeft: 6 }}>Shared with referrer</span>}
+                    </div>
                   </li>
                 ))}
               </ul>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <input style={{ flex: 1 }} placeholder="Add a note (e.g. spoke to polyclinic, awaiting fresh referral)" value={note} onChange={(e) => setNote(e.target.value)} />
-                <button className="btn btn-ghost" disabled={!note.trim()} onClick={() => { update(r.id, {}, { stage: 'Note', actor: ME, text: note.trim() }); setNote('') }}>Add</button>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <input id="desk-note" style={{ flex: 1, minWidth: 200 }} placeholder="Add a note (e.g. spoke to polyclinic, awaiting fresh referral)" value={note} onChange={(e) => setNote(e.target.value)} />
+                <button className="btn btn-ghost" disabled={!note.trim()} onClick={() => { update(r.id, {}, { stage: 'Note', actor: ME, text: note.trim(), shared: shareNote || undefined }); setNote(''); setShareNote(false) }}>Add</button>
               </div>
+              {r.referringMOId && (
+                <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8 }}>
+                  <input type="checkbox" checked={shareNote} onChange={(e) => setShareNote(e.target.checked)} />
+                  Share this note with {r.referringMO} on the referrer portal
+                </label>
+              )}
             </div>
           </div>
 
@@ -148,6 +159,9 @@ function NextAction({ r }: { r: Referral }) {
   const [busy, setBusy] = useState(false)
   const [matches, setMatches] = useState<PatientMatch[] | null>(null)
   const [settle, setSettle] = useState('')
+  const [dx, setDx] = useState(r.outcome?.finalDiagnosis ?? r.diagnosis)
+  const [condition, setCondition] = useState('')
+  const [followUp, setFollowUp] = useState('')
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -255,16 +269,31 @@ function NextAction({ r }: { r: Referral }) {
       break
     }
     case 'Scheduled':
-      body = <button className="btn btn-primary" onClick={() => update(r.id, { stage: 'In treatment' }, { stage: 'In treatment', actor: 'Datamate HIS', text: 'Patient checked in; treatment started' })}>Mark checked in</button>
+      body = <button className="btn btn-primary" onClick={() => update(r.id, {
+        stage: 'In treatment',
+        outcome: { ...r.outcome, ...(r.type === 'OPD consultation' || r.type === 'Investigation' ? {} : { admittedOn: new Date().toISOString().slice(0, 10) }) },
+      }, { stage: 'In treatment', actor: 'Datamate HIS', text: 'Patient checked in; treatment started' })}>Mark checked in</button>
       break
     case 'In treatment':
       body = (
         <>
-          <p className="small">When the discharge summary is finalised in Datamate, record discharge. The summary is attached to the claim and sent back to the polyclinic.</p>
+          <p className="small">When the discharge summary is finalised in Datamate, record discharge. The summary is attached to the claim, and the outcome below is shown to the referring doctor on the referrer portal.</p>
+          <div className="form-grid" style={{ marginBottom: 12 }}>
+            <div className="field full"><label htmlFor="out-dx">Final diagnosis</label><input id="out-dx" value={dx} onChange={(e) => setDx(e.target.value)} /></div>
+            <div className="field full"><label htmlFor="out-cond">Condition at discharge</label><input id="out-cond" value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="e.g. Stable, ambulant" /></div>
+            <div className="field full"><label htmlFor="out-fu">Follow-up advice for the polyclinic</label><textarea id="out-fu" rows={2} value={followUp} onChange={(e) => setFollowUp(e.target.value)} placeholder="e.g. Suture removal day 10; review at VPS Lakeshore in 4 weeks" /></div>
+          </div>
           <button className="btn btn-primary" onClick={() => update(r.id, {
             stage: 'Discharged',
+            outcome: {
+              ...r.outcome,
+              finalDiagnosis: dx.trim() || undefined,
+              condition: condition.trim() || undefined,
+              followUp: followUp.trim() || undefined,
+              dischargedOn: new Date().toISOString().slice(0, 10),
+            },
             documents: r.documents.map((d) => (d.key === 'discharge' ? { ...d, received: true } : d)),
-          }, { stage: 'Discharged', actor: 'Datamate HIS', text: 'Discharge summary finalised; copy shared with referring polyclinic' })}>Record discharge</button>
+          }, { stage: 'Discharged', actor: 'Datamate HIS', text: 'Discharge summary finalised; outcome shared with referring doctor' })}>Record discharge</button>
         </>
       )
       break
