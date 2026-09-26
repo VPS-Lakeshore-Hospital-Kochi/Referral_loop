@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Tracker } from '../components/ui'
 import { isDischarged, referralsVisibleTo, referrerStatus, referrerTimeline } from '../lib/doctors'
@@ -11,13 +11,19 @@ const CLINICAL_STAGES = STAGES.slice(0, STAGES.indexOf('Discharged') + 1)
 
 export default function DoctorReferral() {
   const { id } = useParams()
-  const { doctor, referrals, update } = useStore()
+  const { doctor, referrals, update, logAudit } = useStore()
   const [msg, setMsg] = useState('')
   const [sent, setSent] = useState(false)
+  const r = doctor ? referralsVisibleTo(doctor, referrals).find((x) => x.id === id) : undefined
+
+  // Every record a referrer opens goes in the access log.
+  useEffect(() => {
+    if (doctor && r) logAudit({ actorType: 'doctor', actor: doctor.name, action: 'Viewed referral', detail: `${r.id} · ${r.beneficiary.name}` })
+    else if (doctor && id) logAudit({ actorType: 'system', actor: doctor.name, action: 'Blocked access to referral', detail: id })
+  }, [doctor?.id, id, !!r])
 
   if (!doctor) return <Navigate to="/doctor/login" replace />
   // Only referrals this doctor may see resolve; anything else reads as not found.
-  const r = referralsVisibleTo(doctor, referrals).find((x) => x.id === id)
   if (!r) {
     return <div className="console"><div className="container"><p>Referral not found. <Link to="/doctor">Back to my referrals</Link></p></div></div>
   }
@@ -100,6 +106,7 @@ export default function DoctorReferral() {
                 <span className="small" style={{ color: 'var(--ok)' }}>{sent ? 'Message sent to the ECHS desk.' : ''}</span>
                 <button className="btn btn-primary" disabled={!msg.trim()} onClick={() => {
                   update(r.id, {}, { stage: 'Note', actor: doctor.name, text: msg.trim(), fromReferrer: true })
+                  logAudit({ actorType: 'doctor', actor: doctor.name, action: 'Messaged treating team', detail: r.id })
                   setMsg('')
                   setSent(true)
                 }}>Send</button>

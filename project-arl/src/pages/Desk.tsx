@@ -6,7 +6,7 @@ import { useStore } from '../lib/store'
 import { STAGES, type Stage } from '../lib/types'
 
 export default function Desk() {
-  const { referrals, reset } = useStore()
+  const { referrals, reset, staff, staffLogout } = useStore()
   const nav = useNavigate()
   const [q, setQ] = useState('')
   const [stage, setStage] = useState<Stage | 'All'>('All')
@@ -37,10 +37,12 @@ export default function Desk() {
       <div className="container">
         <div className="page-head">
           <div>
-            <div className="muted small">ECHS Insurance Desk · Kochi</div>
+            <div className="muted small">ECHS Insurance Desk · Kochi · signed in as {staff?.name} ({staff?.role})</div>
             <h1>Referral desk</h1>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={staffLogout}>Sign out</button>
+            {staff?.role === 'Admin' && <Link to="/admin" className="btn btn-ghost">Admin console</Link>}
             <button className="btn btn-ghost" onClick={reset} title="Restore the sample referrals">Reset demo data</button>
             <Link to="/desk/new" className="btn btn-primary">+ New referral</Link>
           </div>

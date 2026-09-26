@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DEFAULT_DOCUMENTS, POLICY, POLYCLINICS, SPECIALTIES } from '../lib/config'
-import { DOCTORS, doctorByName } from '../lib/doctors'
+import { doctorByName } from '../lib/doctors'
+import { staffLabel } from '../lib/staff'
 import { his, type PatientMatch } from '../lib/his'
 import { fmtDate } from '../lib/rules'
 import { useStore } from '../lib/store'
@@ -9,12 +10,12 @@ import type { Beneficiary, Referral, ReferralType, Relationship } from '../lib/t
 
 const TYPES: ReferralType[] = ['OPD consultation', 'Investigation', 'Day care', 'IPD admission', 'Emergency']
 const RELS: Relationship[] = ['Self', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Other dependant']
-const ME = 'Anjali (Insurance Desk)'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
 export default function NewReferral() {
-  const { referrals, add } = useStore()
+  const { referrals, add, doctors, staff } = useStore()
+  const ME = staff ? staffLabel(staff) : 'Unknown'
   const nav = useNavigate()
   const [b, setB] = useState<Beneficiary>({ name: '', echsCardNo: '', serviceNo: '', relationship: 'Self', rank: '', dob: '', gender: 'M', mobile: '' })
   const [f, setF] = useState({ referralNo: '', polyclinic: POLYCLINICS[0], referringMO: '', referralDate: today(), type: 'OPD consultation' as ReferralType, specialty: SPECIALTIES[0], procedure: '', diagnosis: '' })
@@ -57,7 +58,7 @@ export default function NewReferral() {
       id,
       ...f,
       referralNo: f.referralNo || 'EMERGENCY',
-      referringMOId: doctorByName(f.referringMO.trim())?.id,
+      referringMOId: doctorByName(f.referringMO.trim(), doctors)?.id,
       beneficiary: { ...b, rank: b.rank || undefined },
       stage: 'Received',
       exception: null,
@@ -138,8 +139,8 @@ export default function NewReferral() {
             </div>
             <div className="field"><label htmlFor="ref-mo">Referring Medical Officer</label>
               <input id="ref-mo" list="mo-list" value={f.referringMO} onChange={(e) => setRef('referringMO', e.target.value)} placeholder="Pick from the polyclinic roster or type" />
-              <datalist id="mo-list">{DOCTORS.filter((d) => d.polyclinic === f.polyclinic).map((d) => <option key={d.id} value={d.name} />)}</datalist>
-              <span className="small muted">{doctorByName(f.referringMO.trim()) ? 'On the referrer portal: they will see this referral and its outcome.' : 'Not on the referrer portal: the polyclinic OIC will still see it.'}</span>
+              <datalist id="mo-list">{doctors.filter((d) => d.active && d.polyclinic === f.polyclinic).map((d) => <option key={d.id} value={d.name} />)}</datalist>
+              <span className="small muted">{doctorByName(f.referringMO.trim(), doctors) ? 'On the referrer portal: they will see this referral and its outcome.' : 'Not on the referrer portal: the polyclinic OIC will still see it.'}</span>
             </div>
             <div className="field"><label>Referral date</label><input type="date" max={today()} value={f.referralDate} onChange={(e) => setRef('referralDate', e.target.value)} /></div>
             <div className="field"><label>Specialty</label>

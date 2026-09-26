@@ -1,13 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { StageBadge, Tracker } from '../components/ui'
-import { STAFF } from '../lib/config'
+import { staffLabel } from '../lib/staff'
 import { his, type PatientMatch } from '../lib/his'
 import { alertsFor, daysLeftOnReferral, fmtDate, fmtDateTime, inr } from '../lib/rules'
 import { useStore } from '../lib/store'
 import type { Referral } from '../lib/types'
 
-const ME = 'Anjali (Insurance Desk)'
 
 export default function ReferralDetail() {
   const { id } = useParams()
@@ -22,7 +21,9 @@ export default function ReferralDetail() {
 }
 
 function Detail({ r }: { r: Referral }) {
-  const { update } = useStore()
+  const { update, staff, staffUsers } = useStore()
+  const ME = staff ? staffLabel(staff) : 'Unknown'
+  const owners = staffUsers.filter((u) => u.active && u.role !== 'Admin').map(staffLabel)
   const [note, setNote] = useState('')
   const [shareNote, setShareNote] = useState(false)
   const alerts = alertsFor(r)
@@ -43,7 +44,8 @@ function Detail({ r }: { r: Referral }) {
             <StageBadge stage={r.stage} />
             <select value={r.assignedTo ?? ''} onChange={(e) => update(r.id, { assignedTo: e.target.value }, { stage: 'Note', actor: ME, text: `Assigned to ${e.target.value}` })}>
               <option value="" disabled>Assign owner…</option>
-              {STAFF.map((s) => <option key={s}>{s}</option>)}
+              {owners.map((s) => <option key={s}>{s}</option>)}
+              {r.assignedTo && !owners.includes(r.assignedTo) && <option>{r.assignedTo}</option>}
             </select>
           </div>
         </div>
@@ -155,7 +157,8 @@ function Detail({ r }: { r: Referral }) {
 }
 
 function NextAction({ r }: { r: Referral }) {
-  const { update } = useStore()
+  const { update, staff } = useStore()
+  const ME = staff ? staffLabel(staff) : 'Unknown'
   const [busy, setBusy] = useState(false)
   const [matches, setMatches] = useState<PatientMatch[] | null>(null)
   const [settle, setSettle] = useState('')
