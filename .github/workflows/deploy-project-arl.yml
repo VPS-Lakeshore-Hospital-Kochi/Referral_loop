@@ -1,7 +1,16 @@
 name: Deploy Project ARL to GitHub Pages
 
-# Builds project-arl/ and publishes dist/ to the gh-pages branch, which
-# GitHub Pages serves (Settings → Pages → Deploy from a branch → gh-pages / root).
+# Builds project-arl/ and publishes dist/ to the gh-pages branch of this repo.
+#
+# This repo is private, so it can't serve GitHub Pages on the org's plan. The
+# built site (and only the built site: no source, no history) is also pushed
+# to a public repo that serves it. Set up once:
+#   - create the public repo (default sameeraj89/arl-demo, or set the
+#     ARL_PAGES_REPO repository variable to another owner/name)
+#   - add a fine-grained token with Contents: read & write on that repo only,
+#     as the ARL_PAGES_TOKEN secret here
+#   - in the public repo: Settings → Pages → Deploy from a branch → gh-pages / root
+# Without the secret, the public step is skipped.
 on:
   push:
     branches: [main]
@@ -20,6 +29,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # Job-level so the step's `if` can see it (secrets can't be used in `if` directly).
+      PAGES_TOKEN: ${{ secrets.ARL_PAGES_TOKEN }}
     defaults:
       run:
         working-directory: project-arl
@@ -47,3 +59,18 @@ jobs:
           git add -A
           git commit -q -m "Deploy Project ARL from ${SHA::7}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
+
+      - name: Publish the built site to the public Pages repo
+        if: ${{ env.PAGES_TOKEN != '' }}
+        working-directory: project-arl/dist
+        env:
+          PAGES_REPO: ${{ vars.ARL_PAGES_REPO || 'sameeraj89/arl-demo' }}
+        run: |
+          # Fresh single-commit history each time, so nothing from this repo leaks.
+          rm -rf .git
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Deploy Project ARL prototype"
+          git push -f "https://x-access-token:${PAGES_TOKEN}@github.com/${PAGES_REPO}.git" gh-pages
