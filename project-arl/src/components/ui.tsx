@@ -29,7 +29,7 @@ export function AlertBadges({ r }: { r: Referral }) {
   )
 }
 
-export function Tracker({ stage, stages = STAGES, complete }: { stage: Stage; stages?: readonly Stage[]; complete?: boolean }) {
+export function Tracker<S extends string = Stage>({ stage, stages = STAGES as readonly string[] as readonly S[], complete }: { stage: S; stages?: readonly S[]; complete?: boolean }) {
   const idx = stages.indexOf(stage)
   // The last stage counts as done (not "current") once the loop is complete.
   const finished = complete ?? stage === stages[stages.length - 1]

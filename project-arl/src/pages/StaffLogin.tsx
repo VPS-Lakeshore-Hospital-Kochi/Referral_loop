@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { DEMO_PASSWORD, ROLE_SUMMARY } from '../lib/staff'
+import { DEMO_PASSWORD } from '../lib/staff'
 import { useStore } from '../lib/store'
 import SplitLayout from '../components/SplitLayout'
 
@@ -12,7 +12,7 @@ export default function StaffLogin() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  if (staff) return <Navigate to={from ?? (staff.role === 'Admin' ? '/admin' : '/desk')} replace />
+  if (staff) return <Navigate to={from ?? '/desk'} replace />
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -46,10 +46,9 @@ export default function StaffLogin() {
                 {staffUsers.map((u) => (
                   <tr key={u.id} className="click" onClick={() => { setEmail(u.email); setPassword(DEMO_PASSWORD); setError('') }}>
                     <td>
-                      {u.name} {!u.active && <span className="badge danger">Deactivated</span>}
-                      <div className="muted small">{u.role}: {ROLE_SUMMARY[u.role]}</div>
+                      <b style={{ fontWeight: 500 }}>{u.name}</b> {!u.active && <span className="badge danger">Deactivated</span>}
+                      <div className="muted small">{u.role} · <span style={{ overflowWrap: 'anywhere' }}>{u.email}</span></div>
                     </td>
-                    <td className="mono small">{u.email}</td>
                   </tr>
                 ))}
               </tbody>

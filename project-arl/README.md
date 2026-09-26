@@ -10,6 +10,15 @@ This front end is modelled on the "How it works" flow of referral-management pla
 - Treatment is **cashless** at ECHS rates.
 - Claims go to the **bill-processing agency** with the referral, the discharge summary and the itemised bill.
 
+## For the desk team: how to use it
+
+1. **Sign in.** The desk opens on **To do today**: one line per patient, saying what needs doing, with one button. Urgent items (emergencies, expired referrals, ECHS questions) are at the top in red.
+2. **Press the button.** Simple jobs, like "Mark as told", "Checked" and "Arrived", finish right there. Anything else opens the referral.
+3. **On a referral, do the one thing in "Next step".** Everything else (history, documents, hospital numbers) is under **More details** for when you need it.
+4. **Add a referral** with five fields: name, ECHS card, mobile, polyclinic and what they're referred for. If the patient has been here before, pick **Same person** so they keep one hospital number.
+
+Every referral moves through four stages: **New → With us → Discharged → Paid**.
+
 ## What's in the prototype
 
 | Route | Who it's for | What it does |

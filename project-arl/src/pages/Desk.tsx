@@ -1,35 +1,48 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertBadges, StageBadge } from '../components/ui'
-import { alertsFor, fmtDate, inr } from '../lib/rules'
+import { daysLeftOnReferral } from '../lib/rules'
+import { staffLabel } from '../lib/staff'
 import { useStore } from '../lib/store'
-import { STAGES, type Stage } from '../lib/types'
+import { PLAIN_STAGES, plainStage, taskFor, type PlainStage, type QuickAction } from '../lib/tasks'
+import type { Referral } from '../lib/types'
+
+const TONE: Record<PlainStage, string> = { New: 'gray', 'With us': 'maroon', Discharged: 'warn', Paid: 'ok' }
+
+function greeting() {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
 
 export default function Desk() {
-  const { referrals, reset, staff, staffLogout } = useStore()
+  const { referrals, update, reset, staff } = useStore()
   const nav = useNavigate()
   const [q, setQ] = useState('')
-  const [stage, setStage] = useState<Stage | 'All'>('All')
-  const [onlyAction, setOnlyAction] = useState(false)
+  const [stage, setStage] = useState<PlainStage | 'All'>('All')
+  const me = staff ? staffLabel(staff) : 'Unknown'
 
-  const counts = useMemo(() => Object.fromEntries(STAGES.map((s) => [s, referrals.filter((r) => r.stage === s).length])), [referrals])
+  const todo = referrals
+    .map((r) => ({ r, task: taskFor(r) }))
+    .filter((x): x is { r: Referral; task: NonNullable<ReturnType<typeof taskFor>> } => !!x.task)
+    .sort((a, b) => Number(b.task.urgent) - Number(a.task.urgent))
 
-  const kpis = useMemo(() => {
-    const open = referrals.filter((r) => r.stage !== 'Settled')
-    const urgent = referrals.filter((r) => alertsFor(r).some((a) => a.level === 'danger'))
-    const inTreatment = referrals.filter((r) => r.stage === 'In treatment').length
-    const outstanding = referrals.filter((r) => r.stage === 'Claim submitted').reduce((s, r) => s + (r.claimAmount ?? 0), 0)
-    const settled = referrals.filter((r) => r.settledAmount && r.claimAmount)
-    const realisation = settled.length ? settled.reduce((s, r) => s + r.settledAmount!, 0) / settled.reduce((s, r) => s + r.claimAmount!, 0) : null
-    return { open: open.length, urgent: urgent.length, inTreatment, outstanding, realisation }
-  }, [referrals])
+  const quick = (r: Referral, action: QuickAction) => {
+    if (action === 'intimate') {
+      update(r.id, { emergencyIntimatedAt: new Date().toISOString() }, { stage: 'Note', actor: me, text: 'Emergency admission intimated to polyclinic / RC' })
+    } else if (action === 'verify') {
+      if (r.type !== 'Emergency' && daysLeftOnReferral(r) <= 0) {
+        update(r.id, { stage: 'Verified', exception: 'Referral expired' }, { stage: 'Exception', actor: 'ARL rules engine', text: 'Referral older than validity window — fresh referral required' })
+      } else {
+        update(r.id, { stage: 'Verified' }, { stage: 'Verified', actor: me, text: 'ECHS card and referral validated' })
+      }
+    } else {
+      update(r.id, { stage: 'In treatment' }, { stage: 'In treatment', actor: me, text: 'Patient arrived; treatment started' })
+    }
+  }
 
   const rows = referrals.filter((r) => {
-    if (stage !== 'All' && r.stage !== stage) return false
-    if (onlyAction && !alertsFor(r).some((a) => a.level !== 'info')) return false
+    if (stage !== 'All' && plainStage(r) !== stage) return false
     if (!q) return true
-    const hay = [r.id, r.referralNo, r.beneficiary.name, r.beneficiary.echsCardNo, r.beneficiary.serviceNo, r.hisMrn, r.polyclinic, r.specialty].join(' ').toLowerCase()
-    return hay.includes(q.toLowerCase())
+    return [r.beneficiary.name, r.beneficiary.echsCardNo, r.beneficiary.mobile, r.referralNo, r.id, r.polyclinic, r.specialty].join(' ').toLowerCase().includes(q.toLowerCase())
   })
 
   return (
@@ -37,90 +50,71 @@ export default function Desk() {
       <div className="container">
         <div className="page-head">
           <div>
-            <div className="muted small">ECHS Insurance Desk · Kochi · signed in as {staff?.name} ({staff?.role})</div>
-            <h1>Referral desk</h1>
+            <div className="muted small">ECHS referrals</div>
+            <h1>{greeting()}, {staff?.name.split(' ')[0]}</h1>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost" onClick={staffLogout}>Sign out</button>
-            {staff?.role === 'Admin' && <Link to="/admin" className="btn btn-ghost">Admin console</Link>}
-            <button className="btn btn-ghost" onClick={reset} title="Restore the sample referrals">Reset demo data</button>
-            <Link to="/desk/new" className="btn btn-primary">+ New referral</Link>
+          <Link to="/desk/new" className="btn btn-primary btn-lg">+ Add referral</Link>
+        </div>
+
+        <section className="card" aria-labelledby="todo-h">
+          <div className="card-head">
+            <h2 id="todo-h">To do today <span className="count">{todo.length}</span></h2>
+            {todo.some((t) => t.task.urgent) && <span className="badge danger">{todo.filter((t) => t.task.urgent).length} urgent</span>}
           </div>
-        </div>
+          {todo.length === 0 ? (
+            <p className="empty">Nothing waiting. Every referral is on track.</p>
+          ) : (
+            <ul className="todo">
+              {todo.map(({ r, task }) => (
+                <li key={r.id} className={task.urgent ? 'urgent' : ''}>
+                  <button className="todo-main" onClick={() => nav(`/desk/${r.id}`)}>
+                    <b>{r.beneficiary.name}</b>
+                    <span>{task.text}</span>
+                  </button>
+                  {task.quick ? (
+                    <button className="btn btn-primary" onClick={() => quick(r, task.quick!)}>{task.cta}</button>
+                  ) : (
+                    <Link to={`/desk/${r.id}`} className="btn btn-ghost"><span className="chev">{task.cta}</span></Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-        <div className="kpis">
-          <div className="kpi"><span>Open referrals</span><b>{kpis.open}</b><small>not yet settled</small></div>
-          <div className="kpi"><span>Needs action now</span><b style={{ color: 'var(--danger)' }}>{kpis.urgent}</b><small>lapsing, overdue or queried</small></div>
-          <div className="kpi"><span>In treatment</span><b>{kpis.inTreatment}</b><small>OP / IP encounters open in HIS</small></div>
-          <div className="kpi"><span>Claims outstanding</span><b>{inr(kpis.outstanding)}</b><small>uploaded, awaiting settlement</small></div>
-          <div className="kpi"><span>Realisation</span><b>{kpis.realisation === null ? '—' : `${Math.round(kpis.realisation * 100)}%`}</b><small>settled ÷ claimed</small></div>
-        </div>
-
-        <div className="pipeline">
-          {STAGES.map((s) => (
-            <button key={s} className={`pipe ${stage === s ? 'on' : ''}`} onClick={() => setStage(stage === s ? 'All' : s)}>
-              <b>{counts[s]}</b>
-              <span>{s}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="card">
+        <section className="card" style={{ marginTop: 20 }} aria-labelledby="all-h">
+          <div className="card-head">
+            <h2 id="all-h">All referrals</h2>
+            <div className="tabs" role="tablist" style={{ margin: 0 }}>
+              {(['All', ...PLAIN_STAGES] as const).map((s) => (
+                <button key={s} role="tab" aria-selected={stage === s} className={stage === s ? 'on' : ''} onClick={() => setStage(s)}>
+                  {s} <span className="muted">{s === 'All' ? referrals.length : referrals.filter((r) => plainStage(r) === s).length}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="toolbar">
-            <input placeholder="Search name, ECHS card, service no., MRN, referral no., polyclinic…" value={q} onChange={(e) => setQ(e.target.value)} />
-            <select value={stage} onChange={(e) => setStage(e.target.value as Stage | 'All')}>
-              <option value="All">All stages</option>
-              {STAGES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input type="checkbox" checked={onlyAction} onChange={(e) => setOnlyAction(e.target.checked)} /> Needs action
-            </label>
+            <input aria-label="Search referrals" placeholder="Search by name, ECHS card or mobile" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Referral</th>
-                  <th>Beneficiary</th>
-                  <th>Specialty / procedure</th>
-                  <th>Stage</th>
-                  <th>Datamate</th>
-                  <th>Attention</th>
-                  <th>Owner</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="click" onClick={() => nav(`/desk/${r.id}`)}>
-                    <td>
-                      <b>{r.id}</b>
-                      <div className="muted small">{r.polyclinic.replace('ECHS Polyclinic ', 'PC ')} · {fmtDate(r.referralDate)}</div>
-                      {r.type === 'Emergency' && <span className="badge danger" style={{ marginTop: 4 }}>Emergency</span>}
-                    </td>
-                    <td>
-                      {r.beneficiary.name}
-                      <div className="muted small">{r.beneficiary.relationship} · <span className="mono">{r.beneficiary.echsCardNo}</span></div>
-                    </td>
-                    <td>
-                      {r.specialty}
-                      <div className="muted small">{r.procedure}</div>
-                    </td>
-                    <td><StageBadge stage={r.stage} /></td>
-                    <td className="small">
-                      {r.hisMrn ? <span className="mono">{r.hisMrn}</span> : <span className="muted">Not registered</span>}
-                      {r.hisEncounterNo && <div className="mono muted">{r.hisEncounterNo}</div>}
-                    </td>
-                    <td><AlertBadges r={r} /></td>
-                    <td className="small">{r.assignedTo ?? <span className="muted">Unassigned</span>}</td>
-                  </tr>
-                ))}
-                {!rows.length && (
-                  <tr><td colSpan={7} className="muted" style={{ textAlign: 'center', padding: 32 }}>No referrals match.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          <ul className="simple-list">
+            {rows.map((r) => (
+              <li key={r.id}>
+                <Link to={`/desk/${r.id}`}>
+                  <span>
+                    <b>{r.beneficiary.name}</b>
+                    <span className="muted small">{r.specialty} · {r.polyclinic.replace('ECHS Polyclinic ', '')}</span>
+                  </span>
+                  <span className={`badge ${TONE[plainStage(r)]}`}>{plainStage(r)}</span>
+                </Link>
+              </li>
+            ))}
+            {!rows.length && <li className="empty">No referrals match.</li>}
+          </ul>
+        </section>
+
+        <p className="small muted" style={{ marginTop: 24 }}>
+          Prototype with sample data. <button className="linklike" onClick={reset}>Reset sample referrals</button>
+        </p>
       </div>
     </div>
   )
