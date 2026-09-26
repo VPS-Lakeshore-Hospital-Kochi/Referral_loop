@@ -8,7 +8,7 @@ import { fmtDate } from '../lib/rules'
 import { useStore } from '../lib/store'
 import type { Beneficiary, Referral, ReferralType, Relationship } from '../lib/types'
 
-const TYPES: ReferralType[] = ['OPD consultation', 'Investigation', 'Day care', 'IPD admission', 'Emergency']
+const TYPES: ReferralType[] = ['OPD consultation', 'Investigation', 'Day care', 'IPD admission']
 const RELS: Relationship[] = ['Self', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Other dependant']
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -46,7 +46,8 @@ export default function NewReferral() {
   const ageDays = Math.floor((Date.now() - new Date(f.referralDate).getTime()) / 86_400_000)
   const expired = f.type !== 'Emergency' && ageDays > POLICY.referralValidityDays
   const dup = referrals.find((r) => f.referralNo && r.referralNo === f.referralNo && r.stage !== 'Settled')
-  const valid = b.name && b.echsCardNo && b.serviceNo && b.dob && b.mobile.length >= 10 && (f.referralNo || f.type === 'Emergency') && f.procedure && !dup
+  // Only what the desk has in hand at the counter is required; the rest can be added later.
+  const valid = b.name.trim() && b.echsCardNo.trim() && b.mobile.length === 10 && f.procedure.trim() && !dup
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -57,7 +58,7 @@ export default function NewReferral() {
     const r: Referral = {
       id,
       ...f,
-      referralNo: f.referralNo || 'EMERGENCY',
+      referralNo: f.referralNo || (f.type === 'Emergency' ? 'EMERGENCY' : ''),
       referringMOId: doctorByName(f.referringMO.trim(), doctors)?.id,
       beneficiary: { ...b, rank: b.rank || undefined },
       stage: 'Received',
@@ -76,89 +77,86 @@ export default function NewReferral() {
 
   return (
     <div className="console">
-      <div className="container" style={{ maxWidth: 1000 }}>
+      <div className="container narrow">
+        <div className="small" style={{ marginBottom: 8 }}><a href="#/desk" onClick={(e) => { e.preventDefault(); nav('/desk') }}>← All referrals</a></div>
         <div className="page-head">
           <div>
-            <div className="muted small">ECHS Insurance Desk</div>
-            <h1>Log a new referral</h1>
+            <h1>Add a referral</h1>
+            <div className="muted" style={{ marginTop: 4 }}>Five things from the ECHS card and referral slip. You can add the rest later.</div>
           </div>
         </div>
         <form className="card card-pad" onSubmit={submit}>
-          <div className="form-grid">
-            <div className="form-section">Beneficiary (from ECHS card)</div>
-            <div className="field"><label>Beneficiary name</label><input required value={b.name} onChange={(e) => setBen('name', e.target.value)} placeholder="As on ECHS card" /></div>
-            <div className="field"><label>Relationship to ESM</label>
-              <select value={b.relationship} onChange={(e) => setBen('relationship', e.target.value as Relationship)}>{RELS.map((x) => <option key={x}>{x}</option>)}</select>
-            </div>
-            <div className="field"><label>ECHS card no.</label><input required value={b.echsCardNo} onChange={(e) => setBen('echsCardNo', e.target.value.toUpperCase())} placeholder="e.g. KC-100482-01" /></div>
-            <div className="field"><label>Service no. of ESM</label><input required value={b.serviceNo} onChange={(e) => setBen('serviceNo', e.target.value.toUpperCase())} /></div>
-            <div className="field"><label>Rank (ESM)</label><input value={b.rank} onChange={(e) => setBen('rank', e.target.value)} placeholder="e.g. Hav (Retd)" /></div>
-            <div className="field"><label>Date of birth</label><input required type="date" value={b.dob} onChange={(e) => setBen('dob', e.target.value)} /></div>
-            <div className="field"><label>Gender</label>
-              <select value={b.gender} onChange={(e) => setBen('gender', e.target.value as Beneficiary['gender'])}><option value="M">Male</option><option value="F">Female</option><option value="Other">Other</option></select>
-            </div>
-            <div className="field"><label>Mobile</label><input required inputMode="numeric" maxLength={10} value={b.mobile} onChange={(e) => setBen('mobile', e.target.value.replace(/\D/g, ''))} /></div>
-            <div className="field full"><label>ABHA ID (optional)</label><input value={b.abhaId ?? ''} onChange={(e) => setBen('abhaId', e.target.value)} placeholder="14-digit ABHA number, if the beneficiary has one" /></div>
+          <div className="stack" style={{ gap: 16 }}>
+            <div className="field"><label htmlFor="nr-name">1. Patient name</label><input id="nr-name" required value={b.name} onChange={(e) => setBen('name', e.target.value)} placeholder="As on the ECHS card" /></div>
+            <div className="field"><label htmlFor="nr-card">2. ECHS card number</label><input id="nr-card" required value={b.echsCardNo} onChange={(e) => setBen('echsCardNo', e.target.value.toUpperCase())} placeholder="e.g. KC-100482-01" /></div>
+            <div className="field"><label htmlFor="nr-mobile">3. Mobile number</label><input id="nr-mobile" required inputMode="numeric" maxLength={10} value={b.mobile} onChange={(e) => setBen('mobile', e.target.value.replace(/\D/g, ''))} placeholder="10 digits" /></div>
 
-            {matches && (
-              <div className="field full">
-                <label>Datamate HIS — existing records</label>
-                {matches.length === 0 ? (
-                  <div className="alert ok">No existing record found. A new ECHS patient will be registered at verification.</div>
-                ) : (
-                  <>
-                    <div className="alert warn">This beneficiary may already exist in Datamate. Link the right record to avoid a duplicate MRN.</div>
-                    {matches.map((m) => (
-                      <div key={m.patient.mrn} className={`match ${linked === m.patient.mrn ? 'sel' : ''}`}>
-                        <div>
-                          <b>{m.patient.name}</b> <span className="mono small">{m.patient.mrn}</span>
-                          <div className="small muted">{m.patient.patientType} · {m.patient.hospital} · DOB {fmtDate(m.patient.dob)} · {m.reasons.join(' · ')}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <span className={`badge ${m.score > 0.75 ? 'ok' : 'warn'}`}>{Math.round(m.score * 100)}%</span>
-                          <button type="button" className="btn btn-ghost" onClick={() => setLinked(linked === m.patient.mrn ? null : m.patient.mrn)}>
-                            {linked === m.patient.mrn ? 'Linked ✓' : 'Link'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
+            {matches && matches.length > 0 && (
+              <div className="found">
+                <b>Already a patient here?</b>
+                {matches.slice(0, 3).map((m) => (
+                  <div key={m.patient.mrn} className={`match ${linked === m.patient.mrn ? 'sel' : ''}`}>
+                    <div>
+                      <b>{m.patient.name}</b>
+                      <div className="small muted">Born {fmtDate(m.patient.dob)} · mobile ending {m.patient.mobile.slice(-4)} · {m.patient.hospital}</div>
+                    </div>
+                    <button type="button" className={`btn ${linked === m.patient.mrn ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setLinked(linked === m.patient.mrn ? null : m.patient.mrn)}>
+                      {linked === m.patient.mrn ? 'Same person ✓' : 'Same person'}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
-            <div className="form-section">Referral (from polyclinic form)</div>
-            <div className="field"><label>Referral type</label>
-              <select value={f.type} onChange={(e) => setRef('type', e.target.value as ReferralType)}>{TYPES.map((x) => <option key={x}>{x}</option>)}</select>
+            <div className="field"><label htmlFor="nr-pc">4. Which polyclinic referred them?</label>
+              <select id="nr-pc" value={f.polyclinic} onChange={(e) => setRef('polyclinic', e.target.value)}>{POLYCLINICS.map((x) => <option key={x}>{x}</option>)}</select>
             </div>
-            <div className="field"><label>Referral no.{f.type === 'Emergency' && ' (post-facto — optional)'}</label>
-              <input required={f.type !== 'Emergency'} value={f.referralNo} onChange={(e) => setRef('referralNo', e.target.value.toUpperCase())} />
-            </div>
-            <div className="field"><label>Polyclinic</label>
-              <select value={f.polyclinic} onChange={(e) => setRef('polyclinic', e.target.value)}>{POLYCLINICS.map((x) => <option key={x}>{x}</option>)}</select>
-            </div>
-            <div className="field"><label htmlFor="ref-mo">Referring Medical Officer</label>
-              <input id="ref-mo" list="mo-list" value={f.referringMO} onChange={(e) => setRef('referringMO', e.target.value)} placeholder="Pick from the polyclinic roster or type" />
-              <datalist id="mo-list">{doctors.filter((d) => d.active && d.polyclinic === f.polyclinic).map((d) => <option key={d.id} value={d.name} />)}</datalist>
-              <span className="small muted">{doctorByName(f.referringMO.trim(), doctors) ? 'On the referrer portal: they will see this referral and its outcome.' : 'Not on the referrer portal: the polyclinic OIC will still see it.'}</span>
-            </div>
-            <div className="field"><label>Referral date</label><input type="date" max={today()} value={f.referralDate} onChange={(e) => setRef('referralDate', e.target.value)} /></div>
-            <div className="field"><label>Specialty</label>
-              <select value={f.specialty} onChange={(e) => setRef('specialty', e.target.value)}>{SPECIALTIES.map((x) => <option key={x}>{x}</option>)}</select>
-            </div>
-            <div className="field full"><label>Procedure / service referred for</label><input required value={f.procedure} onChange={(e) => setRef('procedure', e.target.value)} placeholder="As written on the referral" /></div>
-            <div className="field full"><label>Provisional diagnosis</label><input value={f.diagnosis} onChange={(e) => setRef('diagnosis', e.target.value)} /></div>
-          </div>
+            <div className="field"><label htmlFor="nr-reason">5. What are they referred for?</label><input id="nr-reason" required value={f.procedure} onChange={(e) => setRef('procedure', e.target.value)} placeholder="As written on the referral, e.g. Knee replacement" /></div>
 
-          <div style={{ marginTop: 18 }}>
-            {expired && <div className="alert danger">Referral is {ageDays} days old — beyond the {POLICY.referralValidityDays}-day validity. It can be logged, but will need a fresh referral before treatment.</div>}
-            {f.type === 'Emergency' && <div className="alert warn">Emergency: intimate the polyclinic / Regional Centre within {POLICY.emergencyIntimationHours} hours of admission. ARL will start the clock.</div>}
-            {dup && <div className="alert danger">Referral {f.referralNo} is already open as {dup.id}.</div>}
-          </div>
+            <label className="toggle-row">
+              <input type="checkbox" checked={f.type === 'Emergency'} onChange={(e) => setRef('type', e.target.checked ? 'Emergency' : 'OPD consultation')} />
+              <span><b>This is an emergency</b><span className="small muted"> · came through Casualty without a referral</span></span>
+            </label>
 
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
-            <button type="button" className="btn btn-ghost" onClick={() => nav('/desk')}>Cancel</button>
-            <button className="btn btn-primary" disabled={!valid}>Log referral</button>
+            <details className="more">
+              <summary>Add more details (optional)</summary>
+              <div className="form-grid" style={{ marginTop: 14 }}>
+                <div className="field"><label htmlFor="nr-rel">Relationship to ex-serviceman</label>
+                  <select id="nr-rel" value={b.relationship} onChange={(e) => setBen('relationship', e.target.value as Relationship)}>{RELS.map((x) => <option key={x}>{x}</option>)}</select>
+                </div>
+                <div className="field"><label htmlFor="nr-svc">Service number</label><input id="nr-svc" value={b.serviceNo} onChange={(e) => setBen('serviceNo', e.target.value.toUpperCase())} /></div>
+                <div className="field"><label htmlFor="nr-rank">Rank</label><input id="nr-rank" value={b.rank} onChange={(e) => setBen('rank', e.target.value)} placeholder="e.g. Hav (Retd)" /></div>
+                <div className="field"><label htmlFor="nr-dob">Date of birth</label><input id="nr-dob" type="date" value={b.dob} onChange={(e) => setBen('dob', e.target.value)} /></div>
+                <div className="field"><label htmlFor="nr-gender">Gender</label>
+                  <select id="nr-gender" value={b.gender} onChange={(e) => setBen('gender', e.target.value as Beneficiary['gender'])}><option value="M">Male</option><option value="F">Female</option><option value="Other">Other</option></select>
+                </div>
+                <div className="field"><label htmlFor="nr-abha">ABHA number</label><input id="nr-abha" value={b.abhaId ?? ''} onChange={(e) => setBen('abhaId', e.target.value)} /></div>
+                <div className="field"><label htmlFor="nr-refno">Referral number</label><input id="nr-refno" value={f.referralNo} onChange={(e) => setRef('referralNo', e.target.value.toUpperCase())} /></div>
+                <div className="field"><label htmlFor="nr-date">Referral date</label><input id="nr-date" type="date" max={today()} value={f.referralDate} onChange={(e) => setRef('referralDate', e.target.value)} /></div>
+                <div className="field"><label htmlFor="ref-mo">Referring doctor</label>
+                  <input id="ref-mo" list="mo-list" value={f.referringMO} onChange={(e) => setRef('referringMO', e.target.value)} placeholder="Start typing a name" />
+                  <datalist id="mo-list">{doctors.filter((d) => d.active && d.polyclinic === f.polyclinic).map((d) => <option key={d.id} value={d.name} />)}</datalist>
+                </div>
+                <div className="field"><label htmlFor="nr-spec">Specialty</label>
+                  <select id="nr-spec" value={f.specialty} onChange={(e) => setRef('specialty', e.target.value)}>{SPECIALTIES.map((x) => <option key={x}>{x}</option>)}</select>
+                </div>
+                {f.type !== 'Emergency' && (
+                  <div className="field"><label htmlFor="nr-type">Visit type</label>
+                    <select id="nr-type" value={f.type} onChange={(e) => setRef('type', e.target.value as ReferralType)}>{TYPES.map((x) => <option key={x}>{x}</option>)}</select>
+                  </div>
+                )}
+                <div className="field"><label htmlFor="nr-dx">Diagnosis on the referral</label><input id="nr-dx" value={f.diagnosis} onChange={(e) => setRef('diagnosis', e.target.value)} /></div>
+              </div>
+            </details>
+
+            {expired && <div className="alert danger">This referral is {ageDays} days old, past the {POLICY.referralValidityDays}-day limit. You can add it, but the patient will need a new one.</div>}
+            {f.type === 'Emergency' && <div className="alert warn">Remember to tell the polyclinic within {POLICY.emergencyIntimationHours} hours. It will be at the top of your to-do list.</div>}
+            {dup && <div className="alert danger">Referral {f.referralNo} has already been added.</div>}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-ghost btn-lg" onClick={() => nav('/desk')}>Cancel</button>
+              <button className="btn btn-primary btn-lg" disabled={!valid}>Add referral</button>
+            </div>
           </div>
         </form>
       </div>

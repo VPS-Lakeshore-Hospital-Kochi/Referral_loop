@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { StageBadge, Tracker } from '../components/ui'
+import { Tracker } from '../components/ui'
 import { staffLabel } from '../lib/staff'
 import { his, type PatientMatch } from '../lib/his'
-import { alertsFor, daysLeftOnReferral, fmtDate, fmtDateTime, inr } from '../lib/rules'
+import { daysLeftOnReferral, emergencyHoursLeft, fmtDate, fmtDateTime, inr } from '../lib/rules'
+import { PLAIN_STAGES, plainStage } from '../lib/tasks'
 import { useStore } from '../lib/store'
 import type { Referral } from '../lib/types'
-
 
 export default function ReferralDetail() {
   const { id } = useParams()
@@ -26,137 +26,120 @@ function Detail({ r }: { r: Referral }) {
   const owners = staffUsers.filter((u) => u.active && u.role !== 'Admin').map(staffLabel)
   const [note, setNote] = useState('')
   const [shareNote, setShareNote] = useState(false)
-  const alerts = alertsFor(r)
   const b = r.beneficiary
+
+  const toggleDoc = (key: string) => {
+    const d = r.documents.find((x) => x.key === key)!
+    update(r.id, { documents: r.documents.map((x) => (x.key === key ? { ...x, received: !x.received } : x)) }, { stage: 'Note', actor: ME, text: `${d.label} marked ${d.received ? 'pending' : 'received'}` })
+  }
 
   return (
     <div className="console">
-      <div className="container">
-        <div className="page-head">
+      <div className="container narrow">
+        <div className="small" style={{ marginBottom: 8 }}><Link to="/desk">← All referrals</Link></div>
+        <div className="page-head" style={{ marginBottom: 16 }}>
           <div>
-            <div className="small"><Link to="/desk">← Referral desk</Link></div>
-            <h1>{r.id} · {b.name}</h1>
-            <div className="muted small" style={{ marginTop: 4 }}>
-              {r.type} · {r.specialty} · referred {fmtDate(r.referralDate)} by {r.polyclinic}
+            <h1>{b.name}</h1>
+            <div className="muted" style={{ marginTop: 4 }}>
+              {r.procedure} · referred by {r.polyclinic.replace('ECHS Polyclinic ', '')} polyclinic{r.type === 'Emergency' ? ' · Emergency' : ''}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <StageBadge stage={r.stage} />
+        </div>
+
+        <div className="card card-pad" style={{ marginBottom: 16 }}>
+          <Tracker stage={plainStage(r)} stages={PLAIN_STAGES} complete={r.stage === 'Settled'} />
+        </div>
+
+        <div className="stack">
+          <NextAction r={r} toggleDoc={toggleDoc} />
+
+          <label className="owner-line">
+            Looked after by
             <select value={r.assignedTo ?? ''} onChange={(e) => update(r.id, { assignedTo: e.target.value }, { stage: 'Note', actor: ME, text: `Assigned to ${e.target.value}` })}>
-              <option value="" disabled>Assign owner…</option>
+              <option value="" disabled>Choose…</option>
               {owners.map((s) => <option key={s}>{s}</option>)}
               {r.assignedTo && !owners.includes(r.assignedTo) && <option>{r.assignedTo}</option>}
             </select>
-          </div>
-        </div>
+          </label>
 
-        <div className="card card-pad" style={{ marginBottom: 18 }}>
-          <Tracker stage={r.stage} />
-        </div>
-
-        <div className="detail-grid">
-          <div className="stack">
-            {alerts.length > 0 && (
-              <div>{alerts.map((a) => <div key={a.text} className={`alert ${a.level}`}>{a.text}</div>)}</div>
-            )}
-            <NextAction r={r} />
-
-            <div className="card card-pad">
-              <h3>Referral</h3>
-              <dl className="kv">
-                <dt>Referral no.</dt><dd className="mono">{r.referralNo}</dd>
-                <dt>Polyclinic</dt><dd>{r.polyclinic}</dd>
-                <dt>Referring MO</dt><dd>{r.referringMO}</dd>
-                <dt>Type</dt><dd>{r.type}</dd>
-                <dt>Diagnosis</dt><dd>{r.diagnosis}</dd>
-                <dt>Procedure</dt><dd>{r.procedure}</dd>
-                <dt>Validity</dt>
-                <dd>{r.type === 'Emergency' ? 'Emergency — post-facto referral' : daysLeftOnReferral(r) > 0 ? `${daysLeftOnReferral(r)} days remaining` : 'Lapsed'}</dd>
-                <dt>Estimate</dt><dd>{inr(r.estimatedAmount)}</dd>
-                <dt>Claimed</dt><dd>{inr(r.claimAmount)}</dd>
-                <dt>Settled</dt><dd>{inr(r.settledAmount)}</dd>
-              </dl>
-            </div>
-
-            <div className="card card-pad">
-              <h3>Timeline</h3>
-              <ul className="timeline">
-                {[...r.timeline].reverse().map((t, i) => (
-                  <li key={i} className={t.stage === 'Exception' ? 'exc' : t.stage === 'Note' ? 'note' : ''}>
-                    <b>{t.fromReferrer ? 'Message from referring doctor' : t.stage}</b> — {t.text}
-                    <div className="muted small">
-                      {fmtDateTime(t.at)} · {t.actor}
-                      {t.fromReferrer && <span className="badge warn" style={{ marginLeft: 6 }}>From referrer</span>}
-                      {t.shared && <span className="badge info" style={{ marginLeft: 6 }}>Shared with referrer</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <input id="desk-note" style={{ flex: 1, minWidth: 200 }} placeholder="Add a note (e.g. spoke to polyclinic, awaiting fresh referral)" value={note} onChange={(e) => setNote(e.target.value)} />
-                <button className="btn btn-ghost" disabled={!note.trim()} onClick={() => { update(r.id, {}, { stage: 'Note', actor: ME, text: note.trim(), shared: shareNote || undefined }); setNote(''); setShareNote(false) }}>Add</button>
+          <details className="more">
+            <summary>More details</summary>
+            <div className="detail-grid" style={{ marginTop: 16 }}>
+              <div className="stack">
+                <div className="card card-pad">
+                  <h3>History and notes</h3>
+                  <ul className="timeline">
+                    {[...r.timeline].reverse().map((t, i) => (
+                      <li key={i} className={t.stage === 'Exception' ? 'exc' : t.stage === 'Note' ? 'note' : ''}>
+                        <b>{t.fromReferrer ? 'Message from referring doctor' : t.stage === 'Registered in HIS' ? 'Registered' : t.stage}</b> — {t.text}
+                        <div className="muted small">
+                          {fmtDateTime(t.at)} · {t.actor}
+                          {t.shared && <span className="badge info" style={{ marginLeft: 6 }}>Doctor can see this</span>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                    <input id="desk-note" style={{ flex: 1, minWidth: 200 }} placeholder="Add a note" value={note} onChange={(e) => setNote(e.target.value)} />
+                    <button className="btn btn-ghost" disabled={!note.trim()} onClick={() => { update(r.id, {}, { stage: 'Note', actor: ME, text: note.trim(), shared: shareNote || undefined }); setNote(''); setShareNote(false) }}>Add note</button>
+                  </div>
+                  {r.referringMOId && (
+                    <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8 }}>
+                      <input type="checkbox" checked={shareNote} onChange={(e) => setShareNote(e.target.checked)} />
+                      Let {r.referringMO} see this note
+                    </label>
+                  )}
+                </div>
+                <div className="card card-pad">
+                  <h3>Referral</h3>
+                  <dl className="kv">
+                    <dt>Referral no.</dt><dd className="mono">{r.referralNo || '—'}</dd>
+                    <dt>Referring doctor</dt><dd>{r.referringMO || '—'}</dd>
+                    <dt>Type</dt><dd>{r.type}</dd>
+                    <dt>Specialty</dt><dd>{r.specialty}</dd>
+                    <dt>Diagnosis</dt><dd>{r.diagnosis || '—'}</dd>
+                    <dt>Valid until</dt>
+                    <dd>{r.type === 'Emergency' ? 'Emergency, no referral needed first' : daysLeftOnReferral(r) > 0 ? `${daysLeftOnReferral(r)} more days` : 'Expired'}</dd>
+                    <dt>Estimate</dt><dd>{inr(r.estimatedAmount)}</dd>
+                    <dt>Billed to ECHS</dt><dd>{inr(r.claimAmount)}</dd>
+                    <dt>Paid by ECHS</dt><dd>{inr(r.settledAmount)}</dd>
+                  </dl>
+                </div>
               </div>
-              {r.referringMOId && (
-                <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8 }}>
-                  <input type="checkbox" checked={shareNote} onChange={(e) => setShareNote(e.target.checked)} />
-                  Share this note with {r.referringMO} on the referrer portal
-                </label>
-              )}
+              <div className="stack">
+                <div className="card card-pad">
+                  <h3>Patient</h3>
+                  <dl className="kv">
+                    <dt>ECHS card</dt><dd className="mono">{b.echsCardNo}</dd>
+                    <dt>Mobile</dt><dd>{b.mobile}</dd>
+                    <dt>Relationship</dt><dd>{b.relationship}</dd>
+                    <dt>Service no.</dt><dd className="mono">{b.serviceNo || '—'}</dd>
+                    {b.rank && (<><dt>Rank</dt><dd>{b.rank}</dd></>)}
+                    <dt>Date of birth</dt><dd>{fmtDate(b.dob)}</dd>
+                    <dt>Hospital no.</dt><dd className="mono">{r.hisMrn ?? <span className="muted">Not registered yet</span>}</dd>
+                    <dt>Visit / admission no.</dt><dd className="mono">{r.hisEncounterNo ?? '—'}</dd>
+                  </dl>
+                </div>
+                <div className="card card-pad checklist">
+                  <h3>Documents</h3>
+                  {r.documents.map((d) => (
+                    <label key={d.key}>
+                      <input type="checkbox" checked={d.received} onChange={() => toggleDoc(d.key)} />
+                      <span style={{ flex: 1 }}>{d.label}</span>
+                      {d.required && <span className="badge gray">needed</span>}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="stack">
-            <div className="card card-pad">
-              <h3>Beneficiary</h3>
-              <dl className="kv">
-                <dt>Name</dt><dd>{b.name}</dd>
-                <dt>Relationship</dt><dd>{b.relationship}</dd>
-                <dt>ECHS card</dt><dd className="mono">{b.echsCardNo}</dd>
-                <dt>Service no.</dt><dd className="mono">{b.serviceNo}</dd>
-                {b.rank && (<><dt>Rank</dt><dd>{b.rank}</dd></>)}
-                <dt>DOB</dt><dd>{fmtDate(b.dob)}</dd>
-                <dt>Mobile</dt><dd>{b.mobile}</dd>
-                {b.abhaId && (<><dt>ABHA</dt><dd className="mono">{b.abhaId}</dd></>)}
-              </dl>
-            </div>
-
-            <div className="card card-pad">
-              <h3>Datamate HIS</h3>
-              <dl className="kv">
-                <dt>MRN</dt><dd className="mono">{r.hisMrn ?? <span className="muted">Not yet registered</span>}</dd>
-                <dt>Encounter</dt><dd className="mono">{r.hisEncounterNo ?? <span className="muted">—</span>}</dd>
-                <dt>Scheme</dt><dd>ECHS (Insurance Desk)</dd>
-              </dl>
-            </div>
-
-            <div className="card card-pad checklist">
-              <h3>Documents</h3>
-              {r.documents.map((d) => (
-                <label key={d.key}>
-                  <input
-                    type="checkbox"
-                    checked={d.received}
-                    onChange={() =>
-                      update(
-                        r.id,
-                        { documents: r.documents.map((x) => (x.key === d.key ? { ...x, received: !x.received } : x)) },
-                        { stage: 'Note', actor: ME, text: `${d.label} marked ${d.received ? 'pending' : 'received'}` },
-                      )
-                    }
-                  />
-                  <span style={{ flex: 1 }}>{d.label}</span>
-                  {d.required && <span className="badge gray">required</span>}
-                </label>
-              ))}
-            </div>
-          </div>
+          </details>
         </div>
       </div>
     </div>
   )
 }
 
-function NextAction({ r }: { r: Referral }) {
+function NextAction({ r, toggleDoc }: { r: Referral; toggleDoc: (key: string) => void }) {
   const { update, staff } = useStore()
   const ME = staff ? staffLabel(staff) : 'Unknown'
   const [busy, setBusy] = useState(false)
@@ -165,6 +148,7 @@ function NextAction({ r }: { r: Referral }) {
   const [dx, setDx] = useState(r.outcome?.finalDiagnosis ?? r.diagnosis)
   const [condition, setCondition] = useState('')
   const [followUp, setFollowUp] = useState('')
+  const [reply, setReply] = useState('')
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -176,48 +160,66 @@ function NextAction({ r }: { r: Referral }) {
   }
 
   const exceptionBox = r.exception && (
-    <div className="card card-pad" style={{ borderColor: 'var(--danger)' }}>
-      <h3 style={{ color: 'var(--danger)' }}>Exception: {r.exception}</h3>
-      <p className="small muted">
+    <div className="card card-pad step-card urgent">
+      <h2>{r.exception === 'Referral expired' ? 'The referral has expired' : r.exception === 'Query from ECHS' ? 'ECHS has a question about the bill' : 'The referral was rejected'}</h2>
+      <p>
         {r.exception === 'Referral expired'
-          ? 'Ask the beneficiary to obtain a fresh referral from the polyclinic, then update the referral date.'
+          ? 'Ask the patient to get a new referral from their polyclinic. When it arrives, press the button.'
           : r.exception === 'Query from ECHS'
-            ? 'Respond to the BPA query with justification and supporting documents, then mark resolved.'
-            : 'Record the reason and inform the beneficiary and polyclinic.'}
+            ? 'Send ECHS the explanation and documents they asked for. When it is done, press the button.'
+            : 'Tell the patient and the polyclinic why, then close it.'}
       </p>
-      <button className="btn btn-ghost" onClick={() =>
+      <button className="btn btn-primary btn-lg" onClick={() =>
         update(r.id, { exception: null, ...(r.exception === 'Referral expired' ? { referralDate: new Date().toISOString().slice(0, 10) } : {}) },
           { stage: 'Note', actor: ME, text: r.exception === 'Referral expired' ? 'Fresh referral received; validity reset' : `Resolved: ${r.exception}` })}>
-        Mark resolved
+        {r.exception === 'Referral expired' ? 'New referral received' : 'Done'}
       </button>
     </div>
   )
 
   const emergencyBox = r.type === 'Emergency' && !r.emergencyIntimatedAt && (
-    <div className="card card-pad" style={{ borderColor: 'var(--warn)' }}>
-      <h3>Emergency intimation</h3>
-      <p className="small muted">Intimate {r.polyclinic} and the Regional Centre of this emergency admission and attach the acknowledgement.</p>
-      <button className="btn btn-maroon" onClick={() => update(r.id, { emergencyIntimatedAt: new Date().toISOString() }, { stage: 'Note', actor: ME, text: 'Emergency admission intimated to polyclinic / RC' })}>
-        Record intimation sent
+    <div className="card card-pad step-card urgent">
+      <h2>Tell the polyclinic about this emergency</h2>
+      <p>Let {r.polyclinic} know this patient was admitted as an emergency{emergencyHoursLeft(r) !== null && emergencyHoursLeft(r)! > 0 ? `. You have ${emergencyHoursLeft(r)} hours left.` : '. This is overdue.'}</p>
+      <button className="btn btn-maroon btn-lg" onClick={() => update(r.id, { emergencyIntimatedAt: new Date().toISOString() }, { stage: 'Note', actor: ME, text: 'Emergency admission intimated to polyclinic / RC' })}>
+        I've told them
       </button>
+    </div>
+  )
+
+  const lastFromDoctor = r.timeline.map((t) => !!t.fromReferrer).lastIndexOf(true)
+  const doctorMsg = lastFromDoctor >= 0 && !r.timeline.slice(lastFromDoctor + 1).some((t) => t.shared) ? r.timeline[lastFromDoctor] : null
+  const replyBox = doctorMsg && (
+    <div className="card card-pad step-card">
+      <h2>{doctorMsg.actor} sent a message</h2>
+      <blockquote className="quote">{doctorMsg.text}</blockquote>
+      <textarea id="doctor-reply" rows={3} style={{ width: '100%' }} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Write your reply. The doctor will see it." />
+      <div style={{ marginTop: 10 }}>
+        <button className="btn btn-primary btn-lg" disabled={!reply.trim()} onClick={() => { update(r.id, {}, { stage: 'Note', actor: ME, text: reply.trim(), shared: true }); setReply('') }}>Send reply</button>
+      </div>
     </div>
   )
 
   let body: ReactNode = null
   switch (r.stage) {
     case 'Received': {
-      const missing = r.documents.filter((d) => d.required && !d.received && d.key !== 'referral')
+      const missing = r.documents.filter((d) => d.required && !d.received)
       body = (
         <>
-          <p className="small">Check the ECHS card is valid for this beneficiary and dependant, the referral is signed and within validity, and the specialty is covered under empanelment.</p>
-          {missing.length > 0 && <div className="alert info">Collect first: {missing.map((d) => d.label).join(', ')}</div>}
-          <button className="btn btn-primary" disabled={busy || missing.length > 0} onClick={() => {
+          <h2>Check the ECHS card and referral</h2>
+          <p>Make sure the card belongs to this patient and the referral is signed and in date. Tick each document when you have it.</p>
+          <div className="checklist" style={{ marginBottom: 14 }}>
+            {r.documents.filter((d) => d.required).map((d) => (
+              <label key={d.key}><input type="checkbox" checked={d.received} onChange={() => toggleDoc(d.key)} /> {d.label}</label>
+            ))}
+          </div>
+          <button className="btn btn-primary btn-lg" disabled={busy || missing.length > 0} onClick={() => {
             if (r.type !== 'Emergency' && daysLeftOnReferral(r) <= 0) {
               update(r.id, { stage: 'Verified', exception: 'Referral expired' }, { stage: 'Exception', actor: 'ARL rules engine', text: 'Referral older than validity window — fresh referral required' })
             } else {
               update(r.id, { stage: 'Verified' }, { stage: 'Verified', actor: ME, text: 'ECHS card and referral validated' })
             }
-          }}>Verify card & referral</button>
+          }}>{missing.length ? 'Tick the documents first' : 'All checked'}</button>
         </>
       )
       break
@@ -225,16 +227,18 @@ function NextAction({ r }: { r: Referral }) {
     case 'Verified':
       body = matches === null ? (
         <>
-          <p className="small">Search Datamate for an existing record before registering. Matches on ECHS card, mobile, DOB and name.</p>
-          <button className="btn btn-primary" disabled={busy || !!r.exception} onClick={() => run(async () => setMatches(await his.findPatients(r.beneficiary)))}>
-            {busy ? 'Searching Datamate…' : 'Find in Datamate HIS'}
+          <h2>Find the patient in the hospital system</h2>
+          <p>We check whether they have been here before, so they keep one hospital number.</p>
+          <button className="btn btn-primary btn-lg" disabled={busy || !!r.exception} onClick={() => run(async () => setMatches(await his.findPatients(r.beneficiary)))}>
+            {busy ? 'Searching…' : 'Search'}
           </button>
         </>
       ) : (
         <>
           {matches.length > 0 ? (
             <>
-              <p className="small">{matches.length} possible existing record{matches.length > 1 ? 's' : ''}. Link rather than create a duplicate.</p>
+              <h2>Is this the same person?</h2>
+              <p>Pick the matching record. Only register a new one if none of these is right.</p>
               {matches.map((m) => (
                 <div className="match" key={m.patient.mrn}>
                   <div>
@@ -243,18 +247,18 @@ function NextAction({ r }: { r: Referral }) {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span className={`badge ${m.score > 0.75 ? 'ok' : 'warn'}`}>{Math.round(m.score * 100)}%</span>
-                    <button className="btn btn-ghost" onClick={() => update(r.id, { stage: 'Registered in HIS', hisMrn: m.patient.mrn }, { stage: 'Registered in HIS', actor: ME, text: `Linked to existing MRN ${m.patient.mrn}` })}>Link</button>
+                    <button className="btn btn-primary" onClick={() => update(r.id, { stage: 'Registered in HIS', hisMrn: m.patient.mrn }, { stage: 'Registered in HIS', actor: ME, text: `Linked to existing MRN ${m.patient.mrn}` })}>Yes, use this</button>
                   </div>
                 </div>
               ))}
             </>
           ) : (
-            <p className="small">No existing record found in Datamate.</p>
+            <><h2>Not found</h2><p>They haven't been here before. Register them as a new ECHS patient.</p></>
           )}
-          <button className="btn btn-primary" disabled={busy} onClick={() => run(async () => {
+          <button className={`btn ${matches.length ? 'btn-ghost' : 'btn-primary btn-lg'}`} disabled={busy} onClick={() => run(async () => {
             const p = await his.registerPatient(r.beneficiary)
             update(r.id, { stage: 'Registered in HIS', hisMrn: p.mrn }, { stage: 'Registered in HIS', actor: 'Datamate HIS', text: `New ECHS patient registered, MRN ${p.mrn}` })
-          })}>{busy ? 'Registering…' : 'Register as new ECHS patient'}</button>
+          })}>{busy ? 'Registering…' : matches.length ? 'None of these, register new' : 'Register new patient'}</button>
         </>
       )
       break
@@ -262,31 +266,33 @@ function NextAction({ r }: { r: Referral }) {
       const kind = r.type === 'OPD consultation' || r.type === 'Investigation' ? 'OP' : 'IP'
       body = (
         <>
-          <p className="small">Open the {kind === 'OP' ? 'OP visit' : 'IP admission'} in Datamate under the ECHS scheme, linked to referral {r.referralNo}.</p>
-          <button className="btn btn-primary" disabled={busy} onClick={() => run(async () => {
+          <h2>{kind === 'OP' ? 'Book the appointment' : 'Admit the patient'}</h2>
+          <p>This opens the {kind === 'OP' ? 'visit' : 'admission'} in the hospital system under ECHS, so the bill goes to ECHS.</p>
+          <button className="btn btn-primary btn-lg" disabled={busy} onClick={() => run(async () => {
             const { encounterNo } = await his.openEncounter(r.hisMrn!, kind, r.referralNo)
             update(r.id, { stage: 'Scheduled', hisEncounterNo: encounterNo }, { stage: 'Scheduled', actor: 'Datamate HIS', text: `${kind} encounter ${encounterNo} opened under ECHS` })
-          })}>{busy ? 'Opening encounter…' : kind === 'OP' ? 'Book OP appointment' : 'Create IP admission'}</button>
+          })}>{busy ? 'Working…' : kind === 'OP' ? 'Book appointment' : 'Admit'}</button>
         </>
       )
       break
     }
     case 'Scheduled':
-      body = <button className="btn btn-primary" onClick={() => update(r.id, {
+      body = <><h2>Has the patient arrived?</h2><p>Press the button when they check in.</p><button className="btn btn-primary btn-lg" onClick={() => update(r.id, {
         stage: 'In treatment',
         outcome: { ...r.outcome, ...(r.type === 'OPD consultation' || r.type === 'Investigation' ? {} : { admittedOn: new Date().toISOString().slice(0, 10) }) },
-      }, { stage: 'In treatment', actor: 'Datamate HIS', text: 'Patient checked in; treatment started' })}>Mark checked in</button>
+      }, { stage: 'In treatment', actor: 'Datamate HIS', text: 'Patient checked in; treatment started' })}>Patient arrived</button></>
       break
     case 'In treatment':
       body = (
         <>
-          <p className="small">When the discharge summary is finalised in Datamate, record discharge. The summary is attached to the claim, and the outcome below is shown to the referring doctor on the referrer portal.</p>
+          <h2>When the patient goes home</h2>
+          <p>Fill this in from the discharge summary. The referring doctor will see it.</p>
           <div className="form-grid" style={{ marginBottom: 12 }}>
             <div className="field full"><label htmlFor="out-dx">Final diagnosis</label><input id="out-dx" value={dx} onChange={(e) => setDx(e.target.value)} /></div>
             <div className="field full"><label htmlFor="out-cond">Condition at discharge</label><input id="out-cond" value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="e.g. Stable, ambulant" /></div>
             <div className="field full"><label htmlFor="out-fu">Follow-up advice for the polyclinic</label><textarea id="out-fu" rows={2} value={followUp} onChange={(e) => setFollowUp(e.target.value)} placeholder="e.g. Suture removal day 10; review at VPS Lakeshore in 4 weeks" /></div>
           </div>
-          <button className="btn btn-primary" onClick={() => update(r.id, {
+          <button className="btn btn-primary btn-lg" onClick={() => update(r.id, {
             stage: 'Discharged',
             outcome: {
               ...r.outcome,
@@ -296,7 +302,7 @@ function NextAction({ r }: { r: Referral }) {
               dischargedOn: new Date().toISOString().slice(0, 10),
             },
             documents: r.documents.map((d) => (d.key === 'discharge' ? { ...d, received: true } : d)),
-          }, { stage: 'Discharged', actor: 'Datamate HIS', text: 'Discharge summary finalised; outcome shared with referring doctor' })}>Record discharge</button>
+          }, { stage: 'Discharged', actor: 'Datamate HIS', text: 'Discharge summary finalised; outcome shared with referring doctor' })}>Patient discharged</button>
         </>
       )
       break
@@ -305,16 +311,17 @@ function NextAction({ r }: { r: Referral }) {
       const missing = r.documents.filter((d) => needed.includes(d.key) && !d.received)
       body = (
         <>
-          <p className="small">Pull the final itemised bill from Datamate and assemble the claim pack for upload to the bill-processing portal.</p>
-          {missing.length > 0 && <div className="alert warn">Claim pack incomplete: {missing.map((d) => d.label).join(', ')}</div>}
-          <button className="btn btn-primary" disabled={busy || missing.length > 0} onClick={() => run(async () => {
+          <h2>Send the bill to ECHS</h2>
+          <p>We gather the referral, ECHS card, discharge summary and final bill, and send them together.</p>
+          {missing.length > 0 && <div className="alert warn">Still missing: {missing.map((d) => d.label).join(', ')}. Tick them under More details.</div>}
+          <button className="btn btn-primary btn-lg" disabled={busy || missing.length > 0} onClick={() => run(async () => {
             const total = await his.getBillTotal(r.hisEncounterNo ?? '')
             update(r.id, {
               stage: 'Claim submitted',
               claimAmount: total,
               documents: r.documents.map((d) => (d.key === 'bill' ? { ...d, received: true } : d)),
             }, { stage: 'Claim submitted', actor: ME, text: `Claim pack uploaded — ${inr(total)}` })
-          })}>{busy ? 'Building claim pack…' : 'Build claim pack & submit'}</button>
+          })}>{busy ? 'Sending…' : 'Send bill'}</button>
         </>
       )
       break
@@ -322,22 +329,23 @@ function NextAction({ r }: { r: Referral }) {
     case 'Claim submitted':
       body = (
         <>
-          <p className="small">Record the amount settled by ECHS when payment is received. Deductions are tracked against the claim.</p>
+          <h2>Waiting for ECHS to pay</h2>
+          <p>Bill sent{r.claimAmount ? ` for ${inr(r.claimAmount)}` : ''}. When the money arrives, enter the amount paid.</p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input type="number" placeholder="Settled amount (₹)" value={settle} onChange={(e) => setSettle(e.target.value)} />
+             <input id="settle-amount" type="number" aria-label="Amount paid" placeholder="Amount paid (₹)" value={settle} onChange={(e) => setSettle(e.target.value)} />
             <button className="btn btn-primary" disabled={!settle || !!r.exception} onClick={() => {
               const amt = Number(settle)
               update(r.id, { stage: 'Settled', settledAmount: amt }, { stage: 'Settled', actor: 'Suresh (Billing)', text: `Settlement received ${inr(amt)}${r.claimAmount ? ` (deduction ${inr(r.claimAmount - amt)})` : ''}` })
-            }}>Record settlement</button>
+            }}>Payment received</button>
           </div>
           {!r.exception && (
-            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => update(r.id, { exception: 'Query from ECHS' }, { stage: 'Exception', actor: 'ECHS BPA', text: 'Query raised on claim' })}>Log query from ECHS</button>
+            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => update(r.id, { exception: 'Query from ECHS' }, { stage: 'Exception', actor: 'ECHS BPA', text: 'Query raised on claim' })}>ECHS asked a question</button>
           )}
         </>
       )
       break
     case 'Settled':
-      body = <div className="alert ok">Loop closed. Referral settled{r.settledAmount ? ` for ${inr(r.settledAmount)}` : ''}.</div>
+      body = <><h2>All done</h2><p>ECHS has paid{r.settledAmount ? ` ${inr(r.settledAmount)}` : ''}. Nothing more to do.</p></>
       break
   }
 
@@ -345,8 +353,9 @@ function NextAction({ r }: { r: Referral }) {
     <>
       {emergencyBox}
       {exceptionBox}
-      <div className="card card-pad" style={{ borderColor: 'var(--blue)' }}>
-        <h3>Next step</h3>
+      {replyBox}
+      <div className="card card-pad step-card">
+        <span className="step-label">Next step</span>
         {body}
       </div>
     </>

@@ -15,7 +15,7 @@ import { useStore } from './lib/store'
 import logoWhite from './assets/lakeshore-logo-white.png'
 
 function Nav() {
-  const { staff } = useStore()
+  const { staff, staffLogout } = useStore()
   return (
     <header className="nav">
       <div className="container nav-inner">
@@ -27,12 +27,22 @@ function Nav() {
           </span>
         </NavLink>
         <nav className="nav-links">
-          <NavLink to="/" end className="hide-sm">Overview</NavLink>
-          <NavLink to="/track" className="hide-sm">Track referral</NavLink>
-          <NavLink to="/doctor">For doctors</NavLink>
-          <NavLink to="/desk">{staff ? 'Referral desk' : 'Staff sign in'}</NavLink>
-          {staff?.role === 'Admin' && <NavLink to="/admin">Admin</NavLink>}
-          {staff && <NavLink to="/desk/new" className="btn btn-light">+ New referral</NavLink>}
+          {staff ? (
+            // Signed-in staff see only what they use every day.
+            <>
+              <NavLink to="/desk" end>Referrals</NavLink>
+              {staff.role === 'Admin' && <NavLink to="/admin">Admin</NavLink>}
+              <button className="nav-signout" onClick={staffLogout}>Sign out</button>
+              <NavLink to="/desk/new" className="btn btn-light hide-sm">+ Add referral</NavLink>
+            </>
+          ) : (
+            <>
+              <NavLink to="/" end className="hide-sm">Overview</NavLink>
+              <NavLink to="/track" className="hide-sm">Track referral</NavLink>
+              <NavLink to="/doctor">For doctors</NavLink>
+              <NavLink to="/desk">Staff sign in</NavLink>
+            </>
+          )}
         </nav>
       </div>
     </header>
