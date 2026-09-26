@@ -39,6 +39,32 @@ export interface TimelineEvent {
   stage: Stage | 'Note' | 'Exception'
   actor: string
   text: string
+  /** Shown to the referring doctor. Stage milestones are shared by default; notes only when flagged. */
+  shared?: boolean
+  /** Written by the referring doctor from the portal. */
+  fromReferrer?: boolean
+}
+
+/** A polyclinic Medical Officer (or OIC) with access to the referrer portal. */
+export interface ReferringDoctor {
+  id: string
+  name: string
+  role: 'Medical Officer' | 'OIC'
+  polyclinic: string
+  /** State Medical Council / NMC registration number — verified at onboarding. */
+  registrationNo: string
+  mobile: string
+}
+
+/** Clinical outcome returned to the referrer — no financial detail. */
+export interface Outcome {
+  seenBy?: string
+  admittedOn?: string
+  procedureDone?: string
+  finalDiagnosis?: string
+  dischargedOn?: string
+  condition?: string
+  followUp?: string
 }
 
 export interface DocumentItem {
@@ -53,6 +79,8 @@ export interface Referral {
   referralNo: string // number printed on the polyclinic referral
   polyclinic: string
   referringMO: string
+  /** Links the referral to a portal account; absent for walk-in emergencies. */
+  referringMOId?: string
   referralDate: string // ISO date
   type: ReferralType
   specialty: string
@@ -70,6 +98,7 @@ export interface Referral {
   claimAmount?: number
   settledAmount?: number
   emergencyIntimatedAt?: string
+  outcome?: Outcome
   documents: DocumentItem[]
   timeline: TimelineEvent[]
 }

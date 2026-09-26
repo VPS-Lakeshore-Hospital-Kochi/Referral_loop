@@ -22,8 +22,8 @@ const HOW: Record<Audience, { label: string; steps: { t: string; d: string; his?
       { t: 'Issue the referral', d: 'Refer as you do today, paper or electronic. Nothing new to install.' },
       { t: 'Instant acknowledgement', d: 'The polyclinic gets confirmation the referral was received, with the hospital reference number.' },
       { t: 'Emergency intimation', d: `Emergency admissions are intimated within the ${POLICY.emergencyIntimationHours}-hour window, tracked on a clock.` },
-      { t: 'Treatment updates', d: 'Admission, procedure and discharge milestones are shared as they happen.' },
-      { t: 'Loop closed', d: 'Discharge summary and follow-up advice return to the referring MO for continuity of care.' },
+      { t: 'Log in and follow', d: 'On the referrer portal, see every patient you referred: registered, seen, admitted, operated on.' },
+      { t: 'Loop closed', d: 'Final diagnosis, procedure and follow-up advice come back to you, and you can message the treating team.' },
     ],
   },
   hospital: {
@@ -44,7 +44,7 @@ const FEATURES = [
   { i: '⛁', t: 'Built on Datamate', d: 'The HIS stays the system of record. ARL reads and writes through the integration gateway — no re-keying.' },
   { i: '◎', t: 'No more duplicate MRNs', d: 'Probabilistic match on card, name, DOB and mobile before registration — the call-centre identity gap closed.' },
   { i: '▤', t: 'Claim-ready packs', d: 'Referral, card, estimate, discharge summary and final bill assembled and checked before upload to the BPA.' },
-  { i: '↺', t: 'Closed loop to polyclinics', d: 'Acknowledgement, milestones and discharge summary go back to the referring polyclinic automatically.' },
+  { i: '↺', t: 'Referrer portal', d: 'Polyclinic MOs log in with an OTP to see who they referred, what happened next, and the follow-up advice. No billing detail is shown.' },
 ]
 
 export default function Landing() {
@@ -66,7 +66,7 @@ export default function Landing() {
               </p>
               <div className="hero-cta">
                 <Link to="/desk" className="btn btn-primary btn-lg">Open the referral desk</Link>
-                <Link to="/track" className="btn btn-ghost btn-lg">Track a referral</Link>
+                <Link to="/doctor" className="btn btn-ghost btn-lg">Referring doctor login</Link>
               </div>
             </div>
             <div className="hero-card" aria-label="Example referral">

@@ -5,6 +5,9 @@ import Desk from './pages/Desk'
 import ReferralDetail from './pages/ReferralDetail'
 import NewReferral from './pages/NewReferral'
 import Track from './pages/Track'
+import DoctorLogin from './pages/DoctorLogin'
+import DoctorPortal from './pages/DoctorPortal'
+import DoctorReferral from './pages/DoctorReferral'
 
 function Nav() {
   return (
@@ -19,7 +22,8 @@ function Nav() {
         </NavLink>
         <nav className="nav-links">
           <NavLink to="/" end className="hide-sm">Overview</NavLink>
-          <NavLink to="/track">Track referral</NavLink>
+          <NavLink to="/track" className="hide-sm">Track referral</NavLink>
+          <NavLink to="/doctor">For doctors</NavLink>
           <NavLink to="/desk">Referral desk</NavLink>
           <NavLink to="/desk/new" className="btn btn-primary" style={{ color: '#fff' }}>+ New</NavLink>
         </nav>
@@ -43,6 +47,9 @@ export default function App() {
         <Route path="/desk" element={<Desk />} />
         <Route path="/desk/new" element={<NewReferral />} />
         <Route path="/desk/:id" element={<ReferralDetail />} />
+        <Route path="/doctor" element={<DoctorPortal />} />
+        <Route path="/doctor/login" element={<DoctorLogin />} />
+        <Route path="/doctor/:id" element={<DoctorReferral />} />
         <Route path="*" element={<Landing />} />
       </Routes>
     </>

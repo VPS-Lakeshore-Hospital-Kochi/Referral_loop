@@ -29,16 +29,21 @@ export function AlertBadges({ r }: { r: Referral }) {
   )
 }
 
-export function Tracker({ stage }: { stage: Stage }) {
-  const idx = STAGES.indexOf(stage)
+export function Tracker({ stage, stages = STAGES, complete }: { stage: Stage; stages?: readonly Stage[]; complete?: boolean }) {
+  const idx = stages.indexOf(stage)
+  // The last stage counts as done (not "current") once the loop is complete.
+  const finished = complete ?? stage === stages[stages.length - 1]
   return (
     <div className="tracker">
-      {STAGES.map((s, i) => (
-        <div key={s} className={`t ${i < idx || (i === idx && s === 'Settled') ? 'done' : ''} ${i === idx && s !== 'Settled' ? 'current' : ''}`}>
-          <div className="dot">{i < idx || (i === idx && s === 'Settled') ? '✓' : i + 1}</div>
-          {s}
-        </div>
-      ))}
+      {stages.map((s, i) => {
+        const done = i < idx || (i === idx && finished)
+        return (
+          <div key={s} className={`t ${done ? 'done' : ''} ${i === idx && !finished ? 'current' : ''}`}>
+            <div className="dot">{done ? '✓' : i + 1}</div>
+            {s}
+          </div>
+        )
+      })}
     </div>
   )
 }

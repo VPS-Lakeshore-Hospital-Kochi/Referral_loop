@@ -35,6 +35,10 @@ export function alertsFor(r: Referral): Alert[] {
     if (left <= 0) out.push({ level: 'danger', text: 'Referral validity lapsed' })
     else if (left <= 5) out.push({ level: 'warn', text: `Referral valid ${left} more day${left === 1 ? '' : 's'}` })
   }
+  const lastFromReferrer = r.timeline.map((t) => !!t.fromReferrer).lastIndexOf(true)
+  if (lastFromReferrer >= 0 && !r.timeline.slice(lastFromReferrer + 1).some((t) => t.shared)) {
+    out.push({ level: 'warn', text: 'Referring doctor awaiting reply' })
+  }
   const missing = r.documents.filter((d) => d.required && !d.received)
   if (missing.length) out.push({ level: 'info', text: `${missing.length} required document${missing.length > 1 ? 's' : ''} pending` })
   if (r.stage === 'Discharged') {

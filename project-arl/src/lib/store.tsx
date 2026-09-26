@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { MOCK_REFERRALS } from './mockData'
-import { STAGES, type Referral, type TimelineEvent } from './types'
+import { doctorById } from './doctors'
+import { STAGES, type Referral, type ReferringDoctor, type TimelineEvent } from './types'
 
 // Demo persistence: the browser's localStorage. Production replaces this with
 // the ARL API, which in turn talks to the Datamate HIS through the gateway.
-const KEY = 'arl.referrals.v1'
+const KEY = 'arl.referrals.v2'
+const SESSION_KEY = 'arl.referrer.session'
 
 function load(): Referral[] {
   try {
@@ -23,6 +25,18 @@ interface Store {
   update(id: string, patch: Partial<Referral>, event?: Omit<TimelineEvent, 'at'>): void
   advance(id: string, actor: string, text?: string): void
   reset(): void
+  /** Referrer portal session (demo: sessionStorage; production: OTP-backed token). */
+  doctor: ReferringDoctor | undefined
+  login(doctorId: string): void
+  logout(): void
+}
+
+function loadSession() {
+  try {
+    return doctorById(sessionStorage.getItem(SESSION_KEY) ?? undefined)
+  } catch {
+    return undefined
+  }
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -65,7 +79,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => setReferrals(MOCK_REFERRALS), [])
 
-  return <Ctx.Provider value={{ referrals, get, add, update, advance, reset }}>{children}</Ctx.Provider>
+  const [doctor, setDoctor] = useState<ReferringDoctor | undefined>(loadSession)
+  const login = useCallback((id: string) => {
+    setDoctor(doctorById(id))
+    try {
+      sessionStorage.setItem(SESSION_KEY, id)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+  const logout = useCallback(() => {
+    setDoctor(undefined)
+    try {
+      sessionStorage.removeItem(SESSION_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  return (
+    <Ctx.Provider value={{ referrals, get, add, update, advance, reset, doctor, login, logout }}>{children}</Ctx.Provider>
+  )
 }
 
 export function useStore() {

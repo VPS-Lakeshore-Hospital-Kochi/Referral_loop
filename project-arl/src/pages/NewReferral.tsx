@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DEFAULT_DOCUMENTS, POLICY, POLYCLINICS, SPECIALTIES } from '../lib/config'
+import { DOCTORS, doctorByName } from '../lib/doctors'
 import { his, type PatientMatch } from '../lib/his'
 import { fmtDate } from '../lib/rules'
 import { useStore } from '../lib/store'
@@ -56,6 +57,7 @@ export default function NewReferral() {
       id,
       ...f,
       referralNo: f.referralNo || 'EMERGENCY',
+      referringMOId: doctorByName(f.referringMO.trim())?.id,
       beneficiary: { ...b, rank: b.rank || undefined },
       stage: 'Received',
       exception: null,
@@ -134,7 +136,11 @@ export default function NewReferral() {
             <div className="field"><label>Polyclinic</label>
               <select value={f.polyclinic} onChange={(e) => setRef('polyclinic', e.target.value)}>{POLYCLINICS.map((x) => <option key={x}>{x}</option>)}</select>
             </div>
-            <div className="field"><label>Referring Medical Officer</label><input value={f.referringMO} onChange={(e) => setRef('referringMO', e.target.value)} /></div>
+            <div className="field"><label htmlFor="ref-mo">Referring Medical Officer</label>
+              <input id="ref-mo" list="mo-list" value={f.referringMO} onChange={(e) => setRef('referringMO', e.target.value)} placeholder="Pick from the polyclinic roster or type" />
+              <datalist id="mo-list">{DOCTORS.filter((d) => d.polyclinic === f.polyclinic).map((d) => <option key={d.id} value={d.name} />)}</datalist>
+              <span className="small muted">{doctorByName(f.referringMO.trim()) ? 'On the referrer portal: they will see this referral and its outcome.' : 'Not on the referrer portal: the polyclinic OIC will still see it.'}</span>
+            </div>
             <div className="field"><label>Referral date</label><input type="date" max={today()} value={f.referralDate} onChange={(e) => setRef('referralDate', e.target.value)} /></div>
             <div className="field"><label>Specialty</label>
               <select value={f.specialty} onChange={(e) => setRef('specialty', e.target.value)}>{SPECIALTIES.map((x) => <option key={x}>{x}</option>)}</select>
