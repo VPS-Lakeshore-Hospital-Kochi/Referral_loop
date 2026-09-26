@@ -39,23 +39,6 @@ export function referrerTimeline(r: Referral): TimelineEvent[] {
   })
 }
 
-/** Stage label as the referrer should read it. */
-export function referrerStatus(r: Referral): { label: string; tone: string } {
-  if (r.exception === 'Referral expired') return { label: 'Fresh referral needed', tone: 'danger' }
-  switch (r.stage) {
-    case 'Received':
-    case 'Verified':
-      return { label: 'Received by hospital', tone: 'gray' }
-    case 'Registered in HIS':
-      return { label: 'Registered', tone: 'info' }
-    case 'Scheduled':
-      return { label: 'Appointment booked', tone: 'info' }
-    case 'In treatment':
-      return { label: r.type === 'OPD consultation' || r.type === 'Investigation' ? 'Being seen' : 'Admitted', tone: 'maroon' }
-    default:
-      return { label: 'Discharged', tone: 'ok' }
-  }
-}
 
 export const isDischarged = (r: Referral) => ['Discharged', 'Claim submitted', 'Settled'].includes(r.stage)
 
