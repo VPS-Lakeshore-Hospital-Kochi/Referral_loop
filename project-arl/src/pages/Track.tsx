@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Tracker } from '../components/ui'
 import { fmtDate, fmtDateTime } from '../lib/rules'
 import { useStore } from '../lib/store'
+import SplitLayout from '../components/SplitLayout'
 import type { Referral, Stage } from '../lib/types'
 
 // Plain-language status for beneficiaries — what the WhatsApp / SMS update
@@ -34,14 +35,7 @@ export default function Track() {
   const publicEvents = result?.timeline.filter((t) => t.stage !== 'Note' && t.stage !== 'Exception' && t.stage !== 'Claim submitted') ?? []
 
   return (
-    <div className="console">
-      <div className="container track-wrap">
-        <div className="page-head">
-          <div>
-            <div className="muted small">For ECHS beneficiaries and families</div>
-            <h1>Track your referral</h1>
-          </div>
-        </div>
+    <SplitLayout eyebrow="For ECHS beneficiaries and families" title="Your referral, in good hands." lead="Check where your referral stands, from the day we receive it to the day you go home.">
         <form className="card card-pad" onSubmit={find}>
           <div className="form-grid">
             <div className="field"><label>ARL reference or polyclinic referral no.</label><input required value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. ARL-2026-0413" /></div>
@@ -53,15 +47,15 @@ export default function Track() {
           </div>
         </form>
 
-        {result === null && <div className="alert danger" style={{ marginTop: 16 }}>No referral found for those details. Please check and try again, or call the ECHS desk.</div>}
+        {result === null && <div className="alert danger">No referral found for those details. Please check and try again, or call the ECHS desk.</div>}
 
         {result && (
-          <div className="card card-pad" style={{ marginTop: 16 }}>
+          <div className="card card-pad">
             <h3>{result.beneficiary.name.split(' ')[0]}, here is where your referral stands</h3>
             <p className="small muted">{result.specialty} · referred by {result.polyclinic} on {fmtDate(result.referralDate)}</p>
             <Tracker stage={result.stage} />
             <div className="alert info" style={{ marginTop: 12 }}>{PLAIN[result.stage]}</div>
-            <ul className="timeline" style={{ marginTop: 16 }}>
+            <ul className="timeline">
               {[...publicEvents].reverse().map((t, i) => (
                 <li key={i}>
                   <b>{t.stage}</b>
@@ -71,7 +65,6 @@ export default function Track() {
             </ul>
           </div>
         )}
-      </div>
-    </div>
+    </SplitLayout>
   )
 }
