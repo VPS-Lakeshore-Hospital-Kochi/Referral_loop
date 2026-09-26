@@ -5,4 +5,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
+  // Skip CSS minification: the minifier rewrites rgba() as 8-digit hex, which older Safari ignores.
+  build: { cssMinify: false },
 })
