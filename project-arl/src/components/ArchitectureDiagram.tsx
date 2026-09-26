@@ -4,13 +4,13 @@
 // Patient Identity (M3) and feeding the Unified Data Platform (M10).
 
 const C = {
-  blue: '#2B7CBE',
-  blueSoft: 'rgba(43,124,190,0.08)',
-  maroon: '#8B1A4A',
-  maroonSoft: 'rgba(139,26,74,0.07)',
-  ink: '#16212E',
-  gray: '#7F8C9B',
-  line: '#D5DDE6',
+  blue: '#001E5F',
+  blueSoft: 'rgba(0,30,95,0.06)',
+  maroon: '#A71E48',
+  maroonSoft: 'rgba(167,30,72,0.07)',
+  ink: '#0B1633',
+  gray: '#697187',
+  line: '#D4D7D7',
 }
 
 function Box({ x, y, w, h, title, sub, tone = 'plain' }: { x: number; y: number; w: number; h: number; title: string; sub?: string; tone?: 'plain' | 'blue' | 'maroon' }) {
@@ -78,7 +78,7 @@ export default function ArchitectureDiagram() {
       <Box x={840} y={167} w={134} h={46} title="Discharge Summ." sub="MRD" />
       <Box x={696} y={223} w={134} h={46} title="Billing" sub="Lab & General · Collection" />
       <Box x={840} y={223} w={134} h={46} title="Fin. Accounts" sub="Receivables · GST" />
-      <rect x={696} y={290} width={278} height={92} rx={9} fill="#F6F8FB" stroke={C.line} />
+      <rect x={696} y={290} width={278} height={92} rx={9} fill="#FEFDEA" stroke={C.line} />
       <text x={835} y={322} textAnchor="middle" fontSize={12.5} fontWeight={600} fill={C.ink}>Oracle — one physical DB</text>
       <text x={835} y={340} textAnchor="middle" fontSize={10.5} fill={C.gray}>schema per module · Kochi + Calicut</text>
       <text x={835} y={356} textAnchor="middle" fontSize={10.5} fill={C.gray}>read-only extract for ARL reporting</text>

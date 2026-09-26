@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { DEMO_PASSWORD, ROLE_SUMMARY } from '../lib/staff'
 import { useStore } from '../lib/store'
+import SplitLayout from '../components/SplitLayout'
 
 export default function StaffLogin() {
   const { staff, staffUsers, staffLogin } = useStore()
@@ -21,16 +22,9 @@ export default function StaffLogin() {
   }
 
   return (
-    <div className="console">
-      <div className="container track-wrap">
-        <div className="page-head">
-          <div>
-            <div className="muted small">VPS Lakeshore staff</div>
-            <h1>Staff sign in</h1>
-          </div>
-        </div>
+    <SplitLayout eyebrow="VPS Lakeshore staff" title="Staff sign in" lead="For the ECHS insurance desk, front office, billing and ARL administrators.">
         <form className="card card-pad stack" style={{ gap: 12 }} onSubmit={submit}>
-          <p className="small" style={{ color: 'var(--ink-2)', margin: 0 }}>For the ECHS insurance desk, front office, billing and ARL administrators.</p>
+          <h3 style={{ margin: 0 }}>Sign in with your hospital account</h3>
           <div className="field">
             <label htmlFor="staff-email">Hospital email</label>
             <input id="staff-email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@lakeshorehospital.org" />
@@ -43,7 +37,7 @@ export default function StaffLogin() {
           <button className="btn btn-primary">Sign in</button>
         </form>
 
-        <div className="card card-pad" style={{ marginTop: 16 }}>
+        <div className="card card-pad">
           <h3>Demo accounts</h3>
           <p className="small muted">Prototype only. Every account uses the password <span className="mono">{DEMO_PASSWORD}</span>. Click one to fill it in.</p>
           <div className="table-wrap">
@@ -62,7 +56,6 @@ export default function StaffLogin() {
             </table>
           </div>
         </div>
-      </div>
-    </div>
+    </SplitLayout>
   )
 }

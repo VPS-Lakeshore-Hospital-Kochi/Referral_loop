@@ -12,17 +12,18 @@ import StaffLogin from './pages/StaffLogin'
 import Admin from './pages/Admin'
 import RequireStaff from './components/RequireStaff'
 import { useStore } from './lib/store'
+import logoWhite from './assets/lakeshore-logo-white.png'
 
 function Nav() {
   const { staff } = useStore()
   return (
     <header className="nav">
       <div className="container nav-inner">
-        <NavLink to="/" className="brand">
-          <span className="brand-mark">ARL</span>
-          <span>
+        <NavLink to="/" className="brand" aria-label="Project ARL home">
+          <img src={logoWhite} alt="VPS Lakeshore" />
+          <span className="brand-product">
             Project ARL
-            <small>VPS Lakeshore · ECHS</small>
+            <small>ECHS referral loop</small>
           </span>
         </NavLink>
         <nav className="nav-links">
@@ -31,7 +32,7 @@ function Nav() {
           <NavLink to="/doctor">For doctors</NavLink>
           <NavLink to="/desk">{staff ? 'Referral desk' : 'Staff sign in'}</NavLink>
           {staff?.role === 'Admin' && <NavLink to="/admin">Admin</NavLink>}
-          {staff && <NavLink to="/desk/new" className="btn btn-primary" style={{ color: '#fff' }}>+ New</NavLink>}
+          {staff && <NavLink to="/desk/new" className="btn btn-light">+ New referral</NavLink>}
         </nav>
       </div>
     </header>

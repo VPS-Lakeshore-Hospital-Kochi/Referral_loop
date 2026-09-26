@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { DEMO_OTP } from '../lib/doctors'
 import { useStore } from '../lib/store'
+import SplitLayout from '../components/SplitLayout'
 
 export default function DoctorLogin() {
   const { doctor, doctors, login, logAudit } = useStore()
@@ -42,18 +43,9 @@ export default function DoctorLogin() {
   }
 
   return (
-    <div className="console">
-      <div className="container track-wrap">
-        <div className="page-head">
-          <div>
-            <div className="muted small">For ECHS polyclinic Medical Officers</div>
-            <h1>Referrer portal</h1>
-          </div>
-        </div>
+    <SplitLayout eyebrow="Referrer portal · ECHS polyclinics" title="Every patient you refer, in good hands." lead="Sign in to see each patient’s progress after referral, their outcome, and the follow-up advice meant for your polyclinic.">
         <div className="card card-pad">
-          <p className="small" style={{ color: 'var(--ink-2)' }}>
-            See every patient you have referred to VPS Lakeshore, what happened after referral, and the discharge advice for follow-up at your polyclinic.
-          </p>
+          <h3>Sign in with your registered mobile</h3>
           {!otpSent ? (
             <form onSubmit={sendOtp} className="stack" style={{ gap: 12 }}>
               <div className="field">
@@ -79,7 +71,7 @@ export default function DoctorLogin() {
           )}
         </div>
 
-        <div className="card card-pad" style={{ marginTop: 16 }}>
+        <div className="card card-pad">
           <h3>Demo accounts</h3>
           <p className="small muted">Prototype only. Use any number below with OTP <span className="mono">{DEMO_OTP}</span>.</p>
           <div className="table-wrap">
@@ -95,7 +87,6 @@ export default function DoctorLogin() {
             </table>
           </div>
         </div>
-      </div>
-    </div>
+    </SplitLayout>
   )
 }
