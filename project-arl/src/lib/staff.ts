@@ -15,12 +15,5 @@ export const DEMO_PASSWORD = 'arl-demo'
 
 export const STAFF_ROLES: StaffRole[] = ['Admin', 'Insurance Desk', 'Front Office', 'Billing']
 
-export const ROLE_SUMMARY: Record<StaffRole, string> = {
-  Admin: 'Referral desk plus the admin console: accounts, policy settings and the access log',
-  'Insurance Desk': 'Verify, register, track and close ECHS referrals',
-  'Front Office': 'Log referrals and register patients',
-  Billing: 'Claim packs, ECHS queries and settlement',
-}
-
 /** How a staff member appears on timelines and as a referral owner, e.g. "Anjali (Insurance Desk)". */
 export const staffLabel = (u: StaffUser) => `${u.name.split(' ')[0]} (${u.role})`

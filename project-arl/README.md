@@ -55,7 +55,9 @@ Everything runs in the browser against **mock data** (`localStorage`). There is 
 ### Staff sign-in and admin console
 
 - The referral desk (`#/desk/*`) needs a staff sign-in. The admin console (`#/admin`) also needs the **Admin** role. Other roles see a "no access" page.
-- **Referring doctors:** add (registration number and mobile must be unique), deactivate or reactivate. A deactivated doctor is signed out and can't sign in again. Their referral history is kept.
+The console has four tabs: **Doctors**, **Staff**, **Settings** and **Activity**. Forms stay hidden until you press "+ Add".
+
+- **Referring doctors:** add (registration number and mobile must be unique), or turn access off and on. A deactivated doctor is signed out and can't sign in again. Their referral history is kept.
 - **Staff accounts:** add hospital (`@lakeshorehospital.org`) accounts, change roles, deactivate. You can't change your own account or remove the last active admin.
 - **ECHS policy:** referral validity, emergency intimation window and claim-upload target. Desk alerts use the saved values straight away.
 - **Access log:** staff and doctor sign-ins, failed or blocked sign-ins, every referral a doctor opens, blocked access attempts, doctor messages, and every admin change. It's searchable and can be filtered by who.
