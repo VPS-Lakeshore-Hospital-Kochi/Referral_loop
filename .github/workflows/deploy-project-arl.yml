@@ -10,7 +10,7 @@ name: Deploy Project ARL to GitHub Pages
 #   - add a fine-grained token with Contents: read & write on that repo only,
 #     as the ARL_PAGES_TOKEN secret here
 #   - in the public repo: Settings → Pages → Deploy from a branch → gh-pages / root
-# Without the secret, the public step is skipped.
+# Without the secret, the run fails with a message saying what to fix.
 on:
   push:
     branches: [main]
@@ -29,9 +29,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      # Job-level so the step's `if` can see it (secrets can't be used in `if` directly).
-      PAGES_TOKEN: ${{ secrets.ARL_PAGES_TOKEN }}
     defaults:
       run:
         working-directory: project-arl
@@ -60,10 +57,38 @@ jobs:
           git commit -q -m "Deploy Project ARL from ${SHA::7}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
 
+      - name: Check the public Pages token
+        # Reports what reached the job (never the values) and fails clearly
+        # instead of skipping quietly when the token is missing.
+        env:
+          HAS_SECRET: ${{ secrets.ARL_PAGES_TOKEN != '' }}
+          HAS_VARIABLE_SAME_NAME: ${{ vars.ARL_PAGES_TOKEN != '' }}
+          HAS_ORG_STYLE_NAME: ${{ secrets.PAGES_TOKEN != '' || secrets.GH_PAGES_TOKEN != '' || secrets.ARL_TOKEN != '' }}
+          PAGES_REPO: ${{ vars.ARL_PAGES_REPO || 'sameeraj89/arl-demo' }}
+        run: |
+          echo "Repository:                 $GITHUB_REPOSITORY"
+          echo "Triggered by:               $GITHUB_EVENT_NAME"
+          echo "Target public repo:         $PAGES_REPO"
+          echo "Secret ARL_PAGES_TOKEN set: $HAS_SECRET"
+          echo "Variable ARL_PAGES_TOKEN:   $HAS_VARIABLE_SAME_NAME"
+          echo "Similar secret names set:   $HAS_ORG_STYLE_NAME"
+          if [ "$HAS_SECRET" != "true" ]; then
+            msg="ARL_PAGES_TOKEN secret not found by this workflow."
+            if [ "$HAS_VARIABLE_SAME_NAME" = "true" ]; then
+              msg="$msg It was added as a Variable, not a Secret: move it to Settings > Secrets and variables > Actions > Secrets."
+            elif [ "$HAS_ORG_STYLE_NAME" = "true" ]; then
+              msg="$msg A token exists under a different name (PAGES_TOKEN, GH_PAGES_TOKEN or ARL_TOKEN): rename it to ARL_PAGES_TOKEN."
+            else
+              msg="$msg Add it under Settings > Secrets and variables > Actions > Repository secrets (an organisation secret must list this repo under Repository access; environment secrets are not used)."
+            fi
+            echo "::error title=Public Pages token missing::$msg"
+            exit 1
+          fi
+
       - name: Publish the built site to the public Pages repo
-        if: ${{ env.PAGES_TOKEN != '' }}
         working-directory: project-arl/dist
         env:
+          PAGES_TOKEN: ${{ secrets.ARL_PAGES_TOKEN }}
           PAGES_REPO: ${{ vars.ARL_PAGES_REPO || 'sameeraj89/arl-demo' }}
         run: |
           # Fresh single-commit history each time, so nothing from this repo leaks.
@@ -73,4 +98,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "Deploy Project ARL prototype"
-          git push -f "https://x-access-token:${PAGES_TOKEN}@github.com/${PAGES_REPO}.git" gh-pages
+          if ! git push -f "https://x-access-token:${PAGES_TOKEN}@github.com/${PAGES_REPO}.git" gh-pages; then
+            echo "::error title=Push to public repo failed::Could not push to ${PAGES_REPO}. Check the repo exists and the token has Contents: Read and write on it."
+            exit 1
+          fi
